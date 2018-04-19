@@ -3,6 +3,13 @@ import numpy
 import logging
 import time
 
+def mapStimParams(params):
+	contrast = params[:,0] / 24 * 3
+	frequency = params[:,1]
+
+	return numpy.stack((contrast, frequency))
+
+
 def mapCSFParams(params):
 	senp = 0.3+0.1*params[:,0]
 	
@@ -63,6 +70,7 @@ class QCSF():
 		self.probabilities = numpy.ones((self.paramComboCount,1))/self.paramComboCount
 
 		self.currentStimulusIndex = None
+		self.currentStimParamIndices = None
 		self.responseHistory = []
 
 	def next(self):
@@ -93,11 +101,18 @@ class QCSF():
 		
 		# select a random one from the highest 10% info givers
 		randIndex = int(numpy.random.rand()*self.stimComboCount/10)
-		self.currentStimulusIndex = sortMap[randIndex]
-		return self.currentStimulusIndex
+		self.currentStimulusIndex = numpy.array([[sortMap[randIndex]]])
+		self.currentStimParamIndices = unroll(
+			self.currentStimulusIndex,
+			self.stimulusRanges,
+			0
+		)[0]
+
+		return self.currentStimParamIndices
 
 	# Returns probability of output parameters given stimulusIndex
 	# @TODO: give this a better name
+	# Expects UNMAPPED parameters
 	def _pmeas(self, parameters, stimulusIndex):
 		# Check if param list is a single-dimension
 		if parameters.shape[1] == 1:
@@ -123,16 +138,15 @@ class QCSF():
 		else:
 			csfValues = self.csf(parameters, stimulusIndices[1,:].reshape(1,-1))
 
-		# @TODO: find out what `sen` is
-		sen = 0.1 * stimulusIndices[0, :]
-		# sen = ones(size(param,1),1)*sen;
-		sen = numpy.ones((parameters.shape[0], 1)) * sen
+		sensitivity = 0.1 * stimulusIndices[0, :]
+		sensitivity = numpy.ones((parameters.shape[0], 1)) * sensitivity
 
-		return 1 - numpy.divide(self.d, 1+numpy.exp((csfValues-sen) / self.sig))
+		return 1 - numpy.divide(self.d, 1+numpy.exp((csfValues-sensitivity) / self.sig))
 
 	# The parametric contrast-sensitivity function
 	# Param order = peak sensitivity, peak frequency, bandwidth, log delta
-	# @TODO: more this out of the class
+	# @TODO: move this out of the class
+	# Expects UNMAPPED parameters
 	def csf(self, parameters, freqNum):
 		[peakSensitivity, peakFrequency, logBandwidth, delta] = mapCSFParams(parameters)
 	
@@ -157,8 +171,12 @@ class QCSF():
 
 		return sensitivity
 
-	def markResponse(self, response, pm):
-		self.responseHistory.append([self.currentStimulusIndex, response.item(0)])
+	def markResponse(self, response):
+		self.responseHistory.append([self.currentStimulusIndex, response])
+		pm = self._pmeas(
+			numpy.arange(self.paramComboCount)[:,numpy.newaxis],
+			self.currentStimulusIndex
+		)
 
 		if response:
 			self.probabilities = numpy.multiply(self.probabilities, pm)
@@ -182,23 +200,49 @@ class QCSF():
 
 		return pMarg.T
 
-	# Plot the current state
-	def visual(self, prob, trueParams):
+	def getParameterEstimates(self, mapped=True):
 		# Calculate a mean value for each of the estimated parameters
 		estimatedParamMeans = numpy.zeros((len(self.parameterRanges), 1))
 		for n, parameterRange in enumerate(self.parameterRanges):
-			pMarg = self.margin(prob, n)
+			pMarg = self.margin(self.probabilities, n)
 			estimatedParamMeans[n] = numpy.dot(pMarg, numpy.arange(parameterRange))
-		
-		frequencyDomain = numpy.arange(self.stimulusRanges[1]).reshape(-1,1)
 
-		truthData = self.csf(trueParams.reshape(1, -1), frequencyDomain)
-		estimatedData = self.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+		if mapped:
+			return mapCSFParams(estimatedParamMeans.T).T[0]
+		else:
+			return estimatedParamMeans
+
+	# Plot the current state
+	def visual(self, qcsf, unmappedTrueParams):
+		estimatedParamMeans = qcsf.getParameterEstimates(mapped=False)
+		frequencyDomain = numpy.arange(qcsf.stimulusRanges[1]).reshape(-1,1)
+
+		truthData = qcsf.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
+		estimatedData = qcsf.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 
 		data = numpy.concatenate((truthData, estimatedData), 1)
 
 		graph.clear()
 		graph.plot(frequencyDomain, data)
+
+		positives = {'c':[], 'f':[]}
+		negatives = {'c':[], 'f':[]}
+
+		for record in qcsf.responseHistory:
+			stimParamIndices = unroll(record[0], self.stimulusRanges, 0)
+			stimParamValues = mapStimParams(stimParamIndices)
+			
+			if record[1]:
+				whichList = positives
+			else:
+				whichList = negatives
+
+			whichList['c'].append(stimParamValues[0])
+			whichList['f'].append(stimParamValues[1])
+
+		graph.plot(positives['f'], positives['c'], 'g^')
+		graph.plot(negatives['f'], negatives['c'], 'rv')
+
 		graph.grid()
 		graph.set_ylim((0,3))
 		plt.pause(0.001)
@@ -207,7 +251,6 @@ class QCSF():
 	def sim(self, parameters, stimulusIndex):
 		p = self._pmeas(parameters, stimulusIndex)
 		response = numpy.random.rand()<p
-		print(f'{stimulusIndex}, response({p}) = {response}')
 		return response
 
 if __name__ == '__main__':
@@ -254,44 +297,34 @@ if __name__ == '__main__':
 		])
 
 
-	trueParams = numpy.array([[20, 11, 8, 11]])
+	unmappedTrueParams = numpy.array([[20, 11, 8, 11]])
 	qcsf = QCSF(stimulusSpace, parameterSpace)
 
 	# Trial loop
-	for i in range(25):
+	for i in range(100):
 		# Get the next stimulus
 		logging.info(f'**************** CALCULATING NEXT **************** {i}')
-		m = qcsf.next()
-		m = numpy.array([[m]])
-		# m is just the index
-		# @TODO: convert that to stim parameters
-		stimParamIndices = unroll(m, qcsf.stimulusRanges, 0).T
-		frequencyCPD = stimulusSpace[0][stimParamIndices[0]]
-		contrast = stimulusSpace[1][stimParamIndices[1]]
-		
-		logging.debug('****************** DOING SAMPLE ******************')
-		pm = qcsf._pmeas(
-			numpy.arange(qcsf.paramComboCount)[:,numpy.newaxis],
-			m
-		)
-		
+		newStimValues = qcsf.next()
+
 		logging.debug('****************** SIMUL RESPON ******************')
 		# Simulate a response
-		response = qcsf.sim(trueParams, m)
+		response = qcsf.sim(unmappedTrueParams, qcsf.currentStimulusIndex).item(0)
+
 		logging.debug('**************** MARKING RESPONSE **************')
-		qcsf.markResponse(response, pm)
+		qcsf.markResponse(response)
 		
 		logging.debug('****************** UPDATE VISUL ******************')
 		# Update the plot
-		qcsf.visual(qcsf.probabilities, trueParams)
+		qcsf.visual(qcsf, unmappedTrueParams)
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
 
 	print('DONE')
 	for record in qcsf.responseHistory:
 		stimIndex = numpy.array([record[0]]).reshape(1,1)
-		stimParams = unroll(stimIndex, qcsf.stimulusRanges, 0)[0]
-		print(stimIndex, stimParams, record[1])
+		stimParamIndices = unroll(stimIndex, qcsf.stimulusRanges, 0)
+		stimParamValues = mapStimParams(stimParamIndices)
+		print(stimIndex, stimParamIndices[0], stimParamValues, record[1])
 
 	plt.ioff()
 	plt.show()
