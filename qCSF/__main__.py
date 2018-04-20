@@ -13,7 +13,7 @@ def setupMonitor(settings):
 	mon.setDistance(settings['Monitor distance'])  # Measure first to ensure this is correct
 	mon.setWidth(settings['Monitor width'])  # Measure first to ensure this is correct
 
-	win = visual.Window(fullscr=True, monitor='testMonitor', units='deg')
+	win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
 
 	return mon, win
 
@@ -55,25 +55,25 @@ def showIntro(win):
 
 def blank(win):
 	static = [
-		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=8, color=3*[-.75]),
-		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=8, color=3*[0.75]),
+		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=16, color=3*[-.75]),
+		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=16, color=3*[0.75]),
 	]
 	for i in range(2):
 		[dots.draw() for dots in static]
 	
 	win.flip()
-	core.wait(0.3)
 
 def runTrials(win, stepHandler, dataFile):
 	stim = visual.GratingStim(win, contrast=1, sf=6, size=4, mask='gauss')
 
 	#for thisIncrement in staircase:  # will continue the staircase until it terminates!
-	for trial in range(15):
+	for trial in range(20):
 		stimParams = stepHandler.next()
 		print('Presenting %s' % stimParams)
 
-		# @TODO: These parameters are indices - not real values :(
-		stim.contrast = stimParams[0]
+		# These parameters are indices - not real values. They must be mapped
+		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
+		stim.contrast = 1/stimParams[0] # convert sensitivity to contrast
 		stim.sf = stimParams[1]
 
 		stim.draw()
@@ -107,7 +107,7 @@ def showFeedback(win, params):
 	message += f'Bandwidth:\n\t{params[2]:.4f}\n\n'
 	message += f'Delta:\n\t{params[3]:.4f}\n\n'
 
-	feedback1 = visual.TextStim(win, text=message)
+	feedback1 = visual.TextStim(win, text=message, bold=True)
 	feedback1.draw()
 	win.flip()
 
@@ -115,8 +115,6 @@ def showFeedback(win, params):
 		allKeys = event.waitKeys()
 		if 'q' in allKeys or 'escape' in allKeys:
 			return
-
-
 
 expInfo = settings.getSettings()
 mon, win = setupMonitor(expInfo)
@@ -126,9 +124,13 @@ stepHandler = setupStepHandler()
 showIntro(win)
 runTrials(win, stepHandler, dataFile)
 
+paramEstimates = stepHandler.getParameterEstimates()
+print('*************')
+print(paramEstimates)
+print('*************')
 dataFile.close()
 
-showFeedback(win, stepHandler.getParameterEstimates())
+showFeedback(win, paramEstimates)
 win.close()
 
 core.quit()
