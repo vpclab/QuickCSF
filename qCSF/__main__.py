@@ -1,55 +1,17 @@
+from functools import partial
 import os
 from collections import OrderedDict
 
 from psychopy import core, visual, gui, data, event, monitors
-from psychopy.tools.filetools import fromFile, toFile
 
 import numpy, random
 
-import qcsf
-
-
-def blank(win):
-	oldColor = win.color
-	win.color = [ .25, .25, 0 ]
-	win.clearBuffer()
-	win.flip()
-	core.wait(0.5)
-	win.color = oldColor
-	win.flip()
-
-def getSettings():
-	defaultSettings = OrderedDict(
-		monitorWidth = 40,
-		monitorDistance = 57,
-		monitorResolution = '2560x1440',
-	#	monitorResolution = '1920x1200',
-	)
-
-	# try to get a previous parameters file
-	settingsFile = os.path.join('data/lastParams.psydat')
-	try: 
-		expInfo = fromFile(settingsFile)
-	except:  # if not there then use a default set
-		expInfo = defaultSettings
-
-	expInfo['Participant'] = ''
-	expInfo['Datetime'] = data.getDateStr()  # add the current time
-
-	# present a dialogue to change params
-	dlg = gui.DlgFromDict(expInfo, title='Quick CSF', fixed=['Datetime'])
-	if dlg.OK:
-		toFile(settingsFile, expInfo)  # save params to file for next time
-	else:
-		core.quit()  # the user hit cancel so exit
-
-	return expInfo
+import qcsf, settings
 
 def setupMonitor(settings):
 	mon = monitors.Monitor('testMonitor')
-	mon.setDistance(settings['monitorDistance'])  # Measure first to ensure this is correct
-	mon.setWidth(settings['monitorWidth'])  # Measure first to ensure this is correct
-	mon.setSizePix([int(dimension) for dimension in settings['monitorResolution'].split('x')])
+	mon.setDistance(settings['Monitor distance'])  # Measure first to ensure this is correct
+	mon.setWidth(settings['Monitor width'])  # Measure first to ensure this is correct
 
 	win = visual.Window(fullscr=True, monitor='testMonitor', units='deg')
 
@@ -57,7 +19,7 @@ def setupMonitor(settings):
 
 def setupOutput(settings):
 	# make a text file to save data
-	fileName = settings['Participant'] + settings['Datetime']
+	fileName = settings['Session ID'] + data.getDateStr()
 	dataFile = open('data/'+fileName+'.csv', 'w')  # a simple text file with 'comma-separated-values'
 	dataFile.write('Trial,Contrast,Frequency,Response,Estimates\n')
 
@@ -78,18 +40,35 @@ def setupStepHandler():
 	return qcsf.QCSF(stimulusSpace, parameterSpace)
 
 def showIntro(win):
-	message1 = visual.TextStim(win, text='Press ⇨ if you can see the stimulus.\nPress ⇦ if you cannot.')
-	message1.draw()
+	lines = [
+		visual.TextStim(win, text='Press → if you can see the stimulus.', pos=(0,0.75)),
+		visual.TextStim(win, text='Press ← if you cannot.', pos=(0,-0.75))
+	]
+	for line in lines:
+		line.color = -1
+		line.wrapWidth = 20
+		line.draw()
+
 	win.flip()
 
-	#pause until there's a keypress
 	event.waitKeys()
+
+def blank(win):
+	static = [
+		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=8, color=3*[-.75]),
+		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=8, color=3*[0.75]),
+	]
+	for i in range(2):
+		[dots.draw() for dots in static]
+	
+	win.flip()
+	core.wait(0.3)
 
 def runTrials(win, stepHandler, dataFile):
 	stim = visual.GratingStim(win, contrast=1, sf=6, size=4, mask='gauss')
 
 	#for thisIncrement in staircase:  # will continue the staircase until it terminates!
-	for trial in range(5):
+	for trial in range(15):
 		stimParams = stepHandler.next()
 		print('Presenting %s' % stimParams)
 
@@ -113,21 +92,20 @@ def runTrials(win, stepHandler, dataFile):
 					core.quit()
 			event.clearEvents()  # clear other (eg mouse) events - they clog the buffer
 
+		blank(win)
 		# add the data to the staircase so it can calculate the next level
-		stepHandler.markResponse(thisResponse)
+
 		logLine = '%i %.4f %.4f %i %s' % (trial, stim.contrast, stim.sf[0], thisResponse, stepHandler.getParameterEstimates().T)
 		print(logLine.replace(' ', ','))
 		dataFile.write(logLine)
+		stepHandler.markResponse(thisResponse)
 
-		blank(win)
 
 def showFeedback(win, params):
-	message = f'Your CSF Parameters:\n\n'
-	message += f'Peak Sensitivity:\n\t{params[0]:.4f}\n\n'
+	message  = f'Peak Sensitivity:\n\t{params[0]:.4f}\n\n'
 	message += f'Peak Frequency:\n\t{params[1]:.4f}\n\n'
 	message += f'Bandwidth:\n\t{params[2]:.4f}\n\n'
 	message += f'Delta:\n\t{params[3]:.4f}\n\n'
-	message += '[Escape] to quit'
 
 	feedback1 = visual.TextStim(win, text=message)
 	feedback1.draw()
@@ -140,7 +118,7 @@ def showFeedback(win, params):
 
 
 
-expInfo = getSettings()
+expInfo = settings.getSettings()
 mon, win = setupMonitor(expInfo)
 dataFile = setupOutput(expInfo)
 stepHandler = setupStepHandler()
