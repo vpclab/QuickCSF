@@ -1,29 +1,40 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy
 import logging
 import time
 
-def mapStimParams(params):
-	contrast = params[:,0] / 24 * 3
-	frequency = params[:,1]
+def mapStimParams(params, exponify=False):
+	contrast = 0.3 + 0.1*params[:,0]
+	frequency = -0.7 + 0.1*params[:,1]
+
+	if exponify:
+		contrast = numpy.power(10, contrast)
+		frequency = numpy.power(10, frequency)
 
 	return numpy.stack((contrast, frequency))
 
-
-def mapCSFParams(params):
-	senp = 0.3+0.1*params[:,0]
+# Returns logs of the things
+def mapCSFParams(params, exponify=False):
+	peakSensitivity = 0.3 + 0.1*params[:,0]
 	
 	# Peak frequency
-	freqp = -0.7+0.1*params[:,1]
+	peakFrequency = -0.7 + 0.1*params[:,1]
 
 	# log bandwidth ???
-	logb = 0.05*params[:,2]
+	bandwidth = 0.05 * params[:,2]
 	
 	# Low frequency truncation (delta)
-	logd = -1.7 + 0.1*params[:,3]
-	delta = numpy.exp(logd*numpy.log(10))
+	logDelta = -1.7 + 0.1 * params[:,3]
+	delta = numpy.exp(logDelta*numpy.log(10))
 
-	return numpy.stack((senp, freqp, logb, delta))
+	if exponify:
+		peakSensitivity = numpy.power(10, peakSensitivity)
+		peakFrequency = numpy.power(10, peakFrequency)
+		bandwidth = numpy.power(10, bandwidth)
+		delta = numpy.power(10, delta)
+
+	return numpy.stack((peakSensitivity, peakFrequency, bandwidth, delta))
 
 def unroll(data, dims, axis):
 	if axis == 0:
@@ -110,6 +121,11 @@ class QCSF():
 
 		return self.currentStimParamIndices
 
+	def stimIndexToStimParams(self, stimulusIndex, exponify=False):
+		stimulusIndices = unroll(stimulusIndex, self.stimulusRanges, 1)
+		return mapStimParams(stimulusIndices, exponify)
+
+
 	# Returns probability of output parameters given stimulusIndex
 	# @TODO: give this a better name
 	# Expects UNMAPPED parameters
@@ -138,7 +154,8 @@ class QCSF():
 		else:
 			csfValues = self.csf(parameters, stimulusIndices[1,:].reshape(1,-1))
 
-		sensitivity = 0.1 * stimulusIndices[0, :]
+		# @TODO: confirm that this 0.3 should actually be here
+		sensitivity = 0.3 + 0.1 * stimulusIndices[0, :]
 		sensitivity = numpy.ones((parameters.shape[0], 1)) * sensitivity
 
 		return 1 - numpy.divide(self.d, 1+numpy.exp((csfValues-sensitivity) / self.sig))
@@ -200,7 +217,7 @@ class QCSF():
 
 		return pMarg.T
 
-	def getParameterEstimates(self, mapped=True):
+	def getParameterEstimates(self, mapped=True, exponify=True):
 		# Calculate a mean value for each of the estimated parameters
 		estimatedParamMeans = numpy.zeros((len(self.parameterRanges), 1))
 		for n, parameterRange in enumerate(self.parameterRanges):
@@ -208,7 +225,7 @@ class QCSF():
 			estimatedParamMeans[n] = numpy.dot(pMarg, numpy.arange(parameterRange))
 
 		if mapped:
-			return mapCSFParams(estimatedParamMeans.T).T[0]
+			return mapCSFParams(estimatedParamMeans.T, exponify).T[0]
 		else:
 			return estimatedParamMeans
 
@@ -219,18 +236,22 @@ class QCSF():
 
 		truthData = qcsf.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
 		estimatedData = qcsf.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+		
+		# Convert from log CPD to CPD
+		frequencyDomain = numpy.power(10, frequencyDomain/10 - 0.7)
+
+		# Convert from log sensitivity to sensitivity
+		truthData = numpy.power(10, truthData)
+		estimatedData = numpy.power(10, estimatedData)
 
 		data = numpy.concatenate((truthData, estimatedData), 1)
-
-		graph.clear()
-		graph.plot(frequencyDomain, data)
 
 		positives = {'c':[], 'f':[]}
 		negatives = {'c':[], 'f':[]}
 
 		for record in qcsf.responseHistory:
 			stimParamIndices = unroll(record[0], self.stimulusRanges, 0)
-			stimParamValues = mapStimParams(stimParamIndices)
+			stimParamValues = mapStimParams(stimParamIndices, True)
 			
 			if record[1]:
 				whichList = positives
@@ -242,23 +263,34 @@ class QCSF():
 
 		graph.plot(positives['f'], positives['c'], 'g^')
 		graph.plot(negatives['f'], negatives['c'], 'rv')
+		graph.plot(frequencyDomain, data, marker='o')
+
+		graph.set_xlabel('Spatial frequency (CPD)')
+		graph.set_xscale('log')
+		graph.set_xlim((.5, 40))
+		graph.set_xticks([1, 2, 4, 8, 16, 32])
+		graph.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+
+		graph.set_ylabel('Contrast sensitivity')
+		graph.set_yscale('log')
+		graph.set_ylim((0.5, 400))
+		graph.set_yticks([2, 10, 50, 200])
+		graph.get_yaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
 		graph.grid()
-		graph.set_ylim((0,3))
 		plt.pause(0.001)
 
 	# @TODO: move this out of the class
 	def sim(self, parameters, stimulusIndex):
 		p = self._pmeas(parameters, stimulusIndex)
-		response = numpy.random.rand()<p
-		return response
+		return numpy.random.rand()<p
 
 if __name__ == '__main__':
 	import pathlib
 
 	numpy.random.seed()
 
-	saveImages = False
+	saveImages = True
 	indexLookupFixed = False
 	
 	pathlib.Path('logs').mkdir(parents=True, exist_ok=True) 
@@ -270,6 +302,7 @@ if __name__ == '__main__':
 
 	fig = plt.figure()
 	graph = fig.add_subplot(1, 1, 1)
+
 	plt.ion()
 	plt.show()
 
@@ -296,7 +329,6 @@ if __name__ == '__main__':
 			numpy.arange(0, 21)		# Low frequency truncation (log delta)
 		])
 
-
 	unmappedTrueParams = numpy.array([[20, 11, 8, 11]])
 	qcsf = QCSF(stimulusSpace, parameterSpace)
 
@@ -310,23 +342,37 @@ if __name__ == '__main__':
 		# Simulate a response
 		response = qcsf.sim(unmappedTrueParams, qcsf.currentStimulusIndex).item(0)
 
+		## Trying to make a perfect sim
+		#stimParams = mapStimParams(numpy.array([newStimValues]))
+		#test = qcsf.csf(unmappedTrueParams, numpy.array([stimParams[1]]))
+		#response = stimParams.item(0) < test.item(0)
+
 		logging.debug('**************** MARKING RESPONSE **************')
 		qcsf.markResponse(response)
 		
 		logging.debug('****************** UPDATE VISUL ******************')
 		# Update the plot
+		graph.clear()
+		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
 		qcsf.visual(qcsf, unmappedTrueParams)
+
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
 
 	print('DONE')
+	print('*******')
 	for record in qcsf.responseHistory:
 		stimIndex = numpy.array([record[0]]).reshape(1,1)
 		stimParamIndices = unroll(stimIndex, qcsf.stimulusRanges, 0)
-		stimParamValues = mapStimParams(stimParamIndices)
-		print(stimIndex, stimParamIndices[0], stimParamValues, record[1])
+		stimParamValues = mapStimParams(stimParamIndices, True)
+		print(stimIndex.item(0), stimParamIndices[0], stimParamValues.T[0], record[1])
 
-	plt.ioff()
-	plt.show()
+	print('*******')
+	paramEstimates = qcsf.getParameterEstimates()
+	print(paramEstimates)
+
+#	plt.ioff()
+#	plt.show()
+	plt.close()
 
 
