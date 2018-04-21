@@ -1,55 +1,120 @@
 import os, re
+import argparse
 
 import psychopy
+import psychopy.gui, psychopy.core
+
 from psychopy.tools import filetools
 
-def getSettings(save=True):
-	fields = [
-		[ 'Session ID', '' ],
-		[ '' ],
-		[ 'Monitor width (cm)', 40 ],
-		[ 'Monitor distance (cm)', 57],
+settingGroups = {
+	'Session settings': [ 
+		['Session ID', ''],
+		['Skip settings dialog', False],
+	],
+	'Display settings': [
+		['Monitor width (cm)', 40],
+		['Monitor distance (cm)', 57]
+	],
+	'Experiment settings': [
+		['Eccentricities (degrees)', '4 8 12'],
+		['Orientations (degrees)', '45 67.5 90 112.5 135']
 	]
+}
 
-	# try to get a previous parameters file
-	settingsFile = os.path.join('data/lastParams.psydat')
+def labelToFieldName(label):
+	val = re.sub('\\([^\\)]*\\)', '', label) # strip stuff in parentheses
+	val = val.strip().replace(' ', '_').lower()
+
+	return val.strip()
+
+def formatLabel(label):
+	return f'&nbsp;&nbsp;&bull;&nbsp;<span>{label}</span>'
+
+def formattedLabelToFieldName(label):
+	return labelToFieldName(label[label.index('<span>')+6:-7])
+
+def parseArguments():
+	parser = argparse.ArgumentParser()
+
+	for _, fields in settingGroups.items():
+		for field in fields:
+			label, default = field
+			parser.add_argument('--' + labelToFieldName(label), nargs='?', const=default)
+
+	args = parser.parse_known_args()[0]
+	return vars(args)
+
+def getSettings(save=True):
+	settings = {}
+	# Defaults
+	for group, fields in settingGroups.items():
+		for field in fields:
+			label, value = field
+			fieldName = labelToFieldName(label)
+			settings[fieldName] = value
+
+	# Saved parameters
+	settingsFile = os.path.join('settings.psydat')
 	try: 
 		savedInfo = filetools.fromFile(settingsFile)
-		savedInfo['Session ID'] = ''
+		for k,v in savedInfo.items():
+			if k != 'session_id':
+				print(f'Loading from file {k} = {v}')
+				settings[k] = v
 	except:  # if not there then use a default set
-		savedInfo = {}
+		print('Could not load old settings')
 		pass
 
-	# build the dialog
-	settingsDialog = psychopy.gui.Dlg(title='qCSF Settings')
-	def nameConverter(label):
-		val = re.sub('\\([^\\)]*\\)', '', label)
-		return val.strip()
+	# Command line arguments
+	commandLineArgs = parseArguments()
+	for k,v in commandLineArgs.items():
+		if v is not None:
+			settings[k] = v
+			print(f'Loading from cmd {k} = {v}')
 
-	for field in fields:
-		if len(field) == 2:
-			label, value = field
-			fieldName = nameConverter(label)
+	print(settings)
+	# GUI
+	if not settings['skip_settings_dialog']:
+		# build the dialog
+		settingsDialog = psychopy.gui.Dlg(title='qCSF Settings')
 
-			if fieldName in savedInfo:
-				value = savedInfo[fieldName]
+		for group, fields in settingGroups.items():
+			settingsDialog.addText(f'<h3 style="text-align:left;weight:bold">{group}</h3>')
 
-			settingsDialog.addField(label, value)
+			for field in fields:
+				label, value = field
+
+				fieldName = labelToFieldName(label)
+				formattedLabel = formatLabel(label)
+
+				if value is not None and value != '':
+					tip = f'Default: {value}'
+				else:
+					tip = ''
+
+				if fieldName in settings:
+					value = settings[fieldName]
+
+				settingsDialog.addField(formattedLabel, value, tip=tip)
+
+		# show the dialog
+		data = settingsDialog.show()
+
+		# retrieve data from the dialog
+		if data is not None:
+			for i,value in enumerate(data):
+				fieldName = formattedLabelToFieldName(settingsDialog.inputFieldNames[i])
+				settings[fieldName] = value
 		else:
-			settingsDialog.addText(field[0])
+			psychopy.core.quit()
 
-	# show the dialog
-	data = settingsDialog.show()
+	if save:
+		filetools.toFile(settingsFile, settings)  # save params to file for next time
 
-	# save the data from the dialog
-	if data is not None:
-		for i,value in enumerate(data):
-			fieldName = nameConverter(settingsDialog.inputFieldNames[i])
-			savedInfo[fieldName] = value
+	return settings
 
-		if save:
-			filetools.toFile(settingsFile, savedInfo)  # save params to file for next time
-	else:
-		psychopy.core.quit()
-
-	return savedInfo
+if __name__ == '__main__':
+	settings = getSettings()
+	print('\n*******************\n')
+	for k,v in settings.items():
+		print(f'{k} = {v}')
