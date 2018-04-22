@@ -1,3 +1,4 @@
+
 import os, re
 import argparse
 
@@ -19,6 +20,10 @@ settingGroups = {
 		['Trials per condition', 25],
 		['Eccentricities (degrees)', '4 8 12'],
 		['Orientations (degrees)', '45 67.5 90 112.5 135']
+	],
+	'Input': [
+		['First stimulus key', 'left'],
+		['Second stimulus key', 'right']
 	]
 }
 
@@ -73,7 +78,12 @@ def getSettings(save=True):
 	commandLineArgs = parseArguments()
 	for k,v in commandLineArgs.items():
 		if v is not None:
-			settings[k] = v
+			try:
+				settings[k] = float(v)
+				if settings[k].is_integer():
+					settings[k] = int(settings[k])
+			except ValueError:
+				settings[k] = v
 
 	# GUI
 	if not settings['skip_settings_dialog']:
