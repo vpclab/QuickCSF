@@ -127,8 +127,8 @@ def runTrials(settings, win, dataFile):
 		for orientation in settings['orientations']:
 			stepHandlers[orientation] = setupStepHandler()
 		
-		for trial in range(settings['trials_per_condition']):
-			orientations = list(settings['orientations'])
+		for trial in range(int(settings['trials_per_condition'])):
+			orientations = list(settings['orientations']) # make a copy
 			random.shuffle(orientations)
 			logging.debug(f'Orientation order: {orientations}')
 
@@ -194,7 +194,7 @@ def runTrials(settings, win, dataFile):
 
 		logging.debug(f'Done with orientation {orientation}')
 		results[eccentricity] = OrderedDict()
-		for orientation in orientationList:
+		for orientation in settings['orientations']:
 			results[eccentricity][orientation] = stepHandlers[orientation].getParameterEstimates()
 
 		if eccentricity != eccentricities[-1]:
