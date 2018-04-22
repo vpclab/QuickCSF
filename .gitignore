@@ -1,7 +1,7 @@
-logs/*
-data/*
-figs/*
-.vscode/*
+.vscode/
+data/
+logs/
+figs/
 *.psydat
 
 # Byte-compiled / optimized / DLL files
