@@ -16,6 +16,7 @@ settingGroups = {
 		['Monitor distance (cm)', 57]
 	],
 	'Experiment settings': [
+		['Trials per condition', 25],
 		['Eccentricities (degrees)', '4 8 12'],
 		['Orientations (degrees)', '45 67.5 90 112.5 135']
 	]
@@ -28,7 +29,7 @@ def labelToFieldName(label):
 	return val.strip()
 
 def formatLabel(label):
-	return f'&nbsp;&nbsp;&bull;&nbsp;<span>{label}</span>'
+	return f'&nbsp;&nbsp;&nbsp;&nbsp;<span>{label}</span>'
 
 def formattedLabelToFieldName(label):
 	return labelToFieldName(label[label.index('<span>')+6:-7])
@@ -39,9 +40,14 @@ def parseArguments():
 	for _, fields in settingGroups.items():
 		for field in fields:
 			label, default = field
+			if isinstance(default, bool):
+				default = not default
 			parser.add_argument('--' + labelToFieldName(label), nargs='?', const=default)
 
-	args = parser.parse_known_args()[0]
+	args, unknown = parser.parse_known_args()
+	if len(unknown) > 0:
+		print(f'UNRECOGNIZED ARGUMENTS: {unknown}')
+
 	return vars(args)
 
 def getSettings(save=True):
@@ -59,10 +65,8 @@ def getSettings(save=True):
 		savedInfo = filetools.fromFile(settingsFile)
 		for k,v in savedInfo.items():
 			if k != 'session_id':
-				print(f'Loading from file {k} = {v}')
 				settings[k] = v
 	except:  # if not there then use a default set
-		print('Could not load old settings')
 		pass
 
 	# Command line arguments
@@ -70,9 +74,7 @@ def getSettings(save=True):
 	for k,v in commandLineArgs.items():
 		if v is not None:
 			settings[k] = v
-			print(f'Loading from cmd {k} = {v}')
 
-	print(settings)
 	# GUI
 	if not settings['skip_settings_dialog']:
 		# build the dialog
@@ -115,6 +117,5 @@ def getSettings(save=True):
 
 if __name__ == '__main__':
 	settings = getSettings()
-	print('\n*******************\n')
 	for k,v in settings.items():
 		print(f'{k} = {v}')
