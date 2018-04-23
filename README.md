@@ -4,7 +4,7 @@ A fast, adaptive approach to estimating contrast sensitivity function parameters
 
 This implmentation is based on:
 
-> Lesmes, L. A., Lu, Z. L., Baek, J., & Albright, T. D. (2010). Bayesian adaptive estimation of the contrast sensitivity function: The quick CSF method. *Journal of visio*n, 10(3), 17-17.
+> Lesmes, L. A., Lu, Z. L., Baek, J., & Albright, T. D. (2010). Bayesian adaptive estimation of the contrast sensitivity function: The quick CSF method. *Journal of vision*, 10(3), 17-17.
 
 Special thanks to Dr. Tianshi Lu at Wichita State University for providing a Matlab implemenation of the fundamental algorithm.
 
