@@ -5,7 +5,7 @@ import argparse
 import psychopy
 import psychopy.gui, psychopy.core
 
-from psychopy.tools import filetools
+import configparser
 
 settingGroups = {
 	'General settings': [ 
@@ -72,12 +72,20 @@ def getSettings(save=True):
 			settings[fieldName] = value
 
 	# Saved parameters
-	settingsFile = os.path.join('settings.psydat')
+	settingsFile = os.path.join('settings.ini')
 	try: 
-		savedInfo = filetools.fromFile(settingsFile)
-		for k,v in savedInfo.items():
-			if k != 'session_id':
-				settings[k] = v
+		#savedInfo = filetools.fromFile(settingsFile)
+		savedInfo = configparser.ConfigParser()
+		savedInfo.read(settingsFile)
+		for _,section in savedInfo.items():
+			for k,v in section.items():
+				if k != 'session_id':
+					if isinstance(settings[k], bool):
+						settings[k] = v[0] in '1tTyY'
+					elif isinstance(settings[k], (float, int)):
+						settings[k] = float(v)
+					else:
+						settings[k] = v
 	except:  # if not there then use a default set
 		pass
 
@@ -128,7 +136,17 @@ def getSettings(save=True):
 			psychopy.core.quit()
 
 	if save:
-		filetools.toFile(settingsFile, settings)  # save params to file for next time
+		#filetools.toFile(settingsFile, settings)  # save params to file for next time
+		for group, fields in settingGroups.items():
+			if not savedInfo.has_section(group):
+				savedInfo.add_section(group)
+
+			for field in fields:
+				fieldName = labelToFieldName(field[0])
+				savedInfo.set(group, fieldName, str(settings[fieldName]))
+
+		with open(settingsFile, 'w') as configfile:
+			savedInfo.write(configfile)
 
 	return settings
 
