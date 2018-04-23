@@ -25,17 +25,19 @@ def setupMonitor(settings):
 	return mon, win
 
 def setupDataFile(config):
-	filename = os.path.join('data', config['session_id'] + data.getDateStr() + '.csv')
-	logging.debug(f'Starting data file {filename}')
+	filename = config['data_filename'].format(**config) + '.csv'
+	logging.info(f'Starting data file {filename}')
 
-	dataFile = open(filename, 'w')  # a simple text file with 'comma-separated-values'
-	dataFile.write('Eccentricity,Orientation,PeakSensitivity,PeakFrequency,LogBandwidth,LogDelta\n')
-	dataFile.close()
+	if not os.path.exists(filename):
+		dataFile = open(filename, 'w')
+		dataFile.write('Eccentricity,Orientation,PeakSensitivity,PeakFrequency,LogBandwidth,LogDelta\n')
+		dataFile.close()
 
 	return filename
 
-def writeOutput(filename, eccentricity, orientation, parameterEstimates):
-	logging.info(f'Saving record to {filename}, e={eccentricity}, o={orientation}, p={parameterEstimates}')
+def writeOutput(config, eccentricity, orientation, parameterEstimates):
+	filename = config['data_filename'].format(**config) + '.csv'
+	logging.debug(f'Saving record to {filename}, e={eccentricity}, o={orientation}, p={parameterEstimates}')
 
 	dataFile = open(filename, 'a')  # a simple text file with 'comma-separated-values'
 	dataFile.write(f'{eccentricity},{orientation},{parameterEstimates[0]},{parameterEstimates[1]},{parameterEstimates[2]},{parameterEstimates[3]}\n')
@@ -79,7 +81,7 @@ def showIntro(win, config, firstTime=False):
 		core.quit()
 
 def takeABreak(win, waitForKey=True):
-	instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the SPACEBAR.'
+	instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
 	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
 	instructionsStim.draw()
 
@@ -87,6 +89,19 @@ def takeABreak(win, waitForKey=True):
 
 	keys = []
 	while waitForKey and (not 'space' in keys):
+		keys = event.waitKeys()
+		if 'escape' in keys:
+			core.quit()
+
+def showFinishedMessage(win):
+	instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
+	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
+	instructionsStim.draw()
+
+	win.flip()
+
+	keys = []
+	while not 'space' in keys:
 		keys = event.waitKeys()
 		if 'escape' in keys:
 			core.quit()
@@ -107,7 +122,7 @@ def getSound(fileName, freq, duration):
 	except ValueError:
 		return sound.Sound(freq, secs=duration, stereo=True)
 
-def runTrials(config, win, dataFilename):
+def runTrials(config, win):
 	key1 = config['first_stimulus_key']
 	key2 = config['second_stimulus_key']
 
@@ -223,8 +238,9 @@ def runTrials(config, win, dataFilename):
 				stepHandler.markResponse(correct)
 
 			if trial == config['trials_per_condition']-1: #if it's the last orientation for this eccentricity
-				fixationStim.autoDraw = False
-				takeABreak(win, False)
+				if eccentricity != eccentricities[-1]:
+					fixationStim.autoDraw = False
+					takeABreak(win, False)
 			else:
 				fixationStim.draw()
 
@@ -234,11 +250,11 @@ def runTrials(config, win, dataFilename):
 		results[eccentricity] = OrderedDict()
 		for orientation in config['orientations']:
 			result = stepHandlers[orientation].getParameterEstimates()
-			writeOutput(dataFilename, eccentricity, orientation, result)
+			writeOutput(config, eccentricity, orientation, result)
 			results[eccentricity][orientation] = result
 
+		fixationStim.autoDraw = False
 		if eccentricity != eccentricities[-1]:
-			fixationStim.autoDraw = False
 			logging.debug('Break time')
 			takeABreak(win)
 
@@ -249,14 +265,18 @@ def main():
 	os.makedirs('data', exist_ok=True)
 	os.makedirs('logs', exist_ok=True)
 
-	logFile = f'logs/{platform.node()}-{data.getDateStr()}.log'
+	config = getSettings()
+	config['start_time'] = data.getDateStr()
+
+	logFile = config['data_filename'].format(**config) + '.log'
 	logging.basicConfig(filename=logFile, level=logging.DEBUG)
 
 	sound.init()
-	config = getSettings()
 	mon, win = setupMonitor(config)
-	dataFilename = setupDataFile(config)
-	parameterEstimates = runTrials(config, win, dataFilename)
+	setupDataFile(config)
+	parameterEstimates = runTrials(config, win)
+
+	showFinishedMessage(win)
 
 	win.close()
 	core.quit()

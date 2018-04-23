@@ -11,7 +11,8 @@ settingGroups = {
 	'General settings': [ 
 		['Session ID', ''],
 		['Skip settings dialog', False],
-		['Always show help', True],
+		['Always show help', False],
+		['Data filename', 'data/PCD_{start_time}_Day1_{session_id}'],
 	],
 	'Display settings': [
 		['Monitor width (cm)', 40],
@@ -145,6 +146,7 @@ def getSettings(save=True):
 		with open(settingsFile, 'w') as configfile:
 			savedInfo.write(configfile)
 
+	fixTypes(settings, settingGroups)
 	return settings
 
 def fixTypes(settings, settingGroups):
