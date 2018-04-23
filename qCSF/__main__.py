@@ -78,7 +78,7 @@ def showIntro(win, config, firstTime=False):
 	if 'escape' in keys:
 		core.quit()
 
-def takeABreak(win):
+def takeABreak(win, waitForKey=True):
 	instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the SPACEBAR.'
 	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
 	instructionsStim.draw()
@@ -86,20 +86,10 @@ def takeABreak(win):
 	win.flip()
 
 	keys = []
-	while not 'space' in keys:
+	while waitForKey and (not 'space' in keys):
 		keys = event.waitKeys()
 		if 'escape' in keys:
 			core.quit()
-
-def blank(win):
-	static = [
-		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=16, color=3*[-.75]),
-		visual.DotStim(win, nDots=1024, fieldSize=60, dotSize=16, color=3*[0.75]),
-	]
-	for i in range(2):
-		[dots.draw() for dots in static]
-	
-	win.flip()
 
 def getSettings():
 	config = settings.getSettings()
@@ -159,19 +149,23 @@ def runTrials(config, win, dataFilename):
 		win.flip()
 		time.sleep(0.5)
 
-		for trial in range(int(config['trials_per_condition'])):
+		for trial in range(config['trials_per_condition']):
 			orientations = list(config['orientations']) # make a copy
 			random.shuffle(orientations)
 			logging.debug(f'Orientation order: {orientations}')
 
-			for orientation in orientations:
+			for orientationIndex,orientation in enumerate(orientations):
 				fixationStim.autoDraw = True
 				win.flip()
 				time.sleep(.25)
 				stepHandler = stepHandlers[orientation]
 
 				stimParams = stepHandler.next()
-				contrast = 1/stimParams[0] # convert sensitivity to contrast
+				if stimParams[0] == 0:
+					contrast = 1
+				else:
+					contrast = 1/stimParams[0] # convert sensitivity to contrast
+
 				frequency = stimParams[1]
 				logging.info(f'Presenting contrast={contrast}, frequency={frequency}, orientation={orientation}')
 
@@ -223,11 +217,16 @@ def runTrials(config, win, dataFilename):
 					logging.debug('Incorrect response')
 					negativeFeedback.play()
 
-				fixationStim.draw()
 				win.flip()
 				logLine = f'E={eccentricity},O={orientation},T={trial},C={contrast},F={frequency},Correct={correct}'
 				logging.info(f'Response: {logLine}')
 				stepHandler.markResponse(correct)
+
+			if trial == config['trials_per_condition']-1: #if it's the last orientation for this eccentricity
+				fixationStim.autoDraw = False
+				takeABreak(win, False)
+			else:
+				fixationStim.draw()
 
 			logging.debug(f'Done with trial {trial}')
 
