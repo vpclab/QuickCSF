@@ -5,7 +5,7 @@ import logging
 import time
 
 def mapStimParams(params, exponify=False):
-	contrast = 0.3 + 0.1*params[:,0]
+	contrast = 0.1*params[:,0]
 	frequency = -0.7 + 0.1*params[:,1]
 
 	if exponify:
@@ -154,8 +154,7 @@ class QCSF():
 		else:
 			csfValues = self.csf(parameters, stimulusIndices[1,:].reshape(1,-1))
 
-		# @TODO: confirm that this 0.3 should actually be here
-		sensitivity = 0.3 + 0.1 * stimulusIndices[0, :]
+		sensitivity = 0.1 * stimulusIndices[0, :]
 		sensitivity = numpy.ones((parameters.shape[0], 1)) * sensitivity
 
 		return 1 - numpy.divide(self.d, 1+numpy.exp((csfValues-sensitivity) / self.sig))
@@ -163,7 +162,7 @@ class QCSF():
 	# The parametric contrast-sensitivity function
 	# Param order = peak sensitivity, peak frequency, bandwidth, log delta
 	# @TODO: move this out of the class
-	# Expects UNMAPPED parameters
+	# Expects UNMAPPED parameters and frequencyNum
 	def csf(self, parameters, freqNum):
 		[peakSensitivity, peakFrequency, logBandwidth, delta] = mapCSFParams(parameters)
 	
@@ -292,9 +291,9 @@ if __name__ == '__main__':
 
 	saveImages = True
 	indexLookupFixed = False
-	
+
 	pathlib.Path('logs').mkdir(parents=True, exist_ok=True) 
-	logging.basicConfig(filename='logs/%d.log' % time.time(), level=logging.DEBUG)
+#	logging.basicConfig(filename='logs/%d.log' % time.time(), level=logging.DEBUG)
 
 	if saveImages:
 		pathlib.Path('figs').mkdir(parents=True, exist_ok=True) 
@@ -308,8 +307,8 @@ if __name__ == '__main__':
 
 	if indexLookupFixed:
 		stimulusSpace = numpy.array([
-			numpy.linspace(.1, 1, 24),	# Contrast
-			numpy.linspace(.2, 36, 31)	# Frequency
+			numpy.linspace(.1, 1, 31),	# Contrast
+			numpy.linspace(.2, 36, 24)	# Frequency
 		])
 		parameterSpace = numpy.array([
 			numpy.linspace(2, 2000, 28),	# Peak sensitivity
@@ -319,8 +318,8 @@ if __name__ == '__main__':
 		])
 	else:
 		stimulusSpace = numpy.array([
-			numpy.arange(0, 24),	# Contrast
-			numpy.arange(0, 31),	# Frequency
+			numpy.arange(0, 31),	# Contrast
+			numpy.arange(0, 24),	# Frequency
 		])
 		parameterSpace = numpy.array([
 			numpy.arange(0, 28),	# Peak sensitivity
@@ -335,7 +334,7 @@ if __name__ == '__main__':
 	# Trial loop
 	for i in range(100):
 		# Get the next stimulus
-		logging.info(f'**************** CALCULATING NEXT **************** {i}')
+#		logging.info(f'**************** CALCULATING NEXT **************** {i}')
 		newStimValues = qcsf.next()
 
 		logging.debug('****************** SIMUL RESPON ******************')
@@ -347,7 +346,7 @@ if __name__ == '__main__':
 		#test = qcsf.csf(unmappedTrueParams, numpy.array([stimParams[1]]))
 		#response = stimParams.item(0) < test.item(0)
 
-		logging.debug('**************** MARKING RESPONSE **************')
+#		logging.debug('**************** MARKING RESPONSE **************')
 		qcsf.markResponse(response)
 		
 		logging.debug('****************** UPDATE VISUL ******************')
@@ -371,8 +370,8 @@ if __name__ == '__main__':
 	paramEstimates = qcsf.getParameterEstimates()
 	print(paramEstimates)
 
-#	plt.ioff()
-#	plt.show()
-	plt.close()
+	plt.ioff()
+	plt.show()
+#	plt.close()
 
 
