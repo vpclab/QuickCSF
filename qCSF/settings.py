@@ -8,20 +8,27 @@ import psychopy.gui, psychopy.core
 from psychopy.tools import filetools
 
 settingGroups = {
-	'Session settings': [ 
+	'General settings': [ 
 		['Session ID', ''],
 		['Skip settings dialog', False],
+		['Always show help', True],
 	],
 	'Display settings': [
 		['Monitor width (cm)', 40],
-		['Monitor distance (cm)', 57]
+		['Monitor distance (cm)', 57],
+		['Fixation size (arcmin)', 20],
 	],
 	'Experiment settings': [
 		['Trials per condition', 25],
 		['Eccentricities (degrees)', '4 8 12'],
-		['Orientations (degrees)', '45 67.5 90 112.5 135']
+		['Orientations (degrees)', '45 67.5 90 112.5 135'],
 	],
-	'Input': [
+	'Stimuli settings': [
+		['Stimulus angle (degrees)', 45],
+		['Stimulus duration (ms)', 200],
+		['Time between stimuli (ms)', 500],
+	],
+	'Input settings': [
 		['First stimulus key', 'left'],
 		['Second stimulus key', 'right']
 	]

@@ -6,6 +6,10 @@ import logging
 from functools import partial
 from collections import OrderedDict
 
+import psychopy
+
+psychopy.prefs.general['audioLib'] = ['pyo','pygame', 'sounddevice']
+
 from psychopy import core, visual, gui, data, event, monitors, sound
 import numpy
 
@@ -20,13 +24,22 @@ def setupMonitor(settings):
 
 	return mon, win
 
-def setupOutput(settings):
-	# make a text file to save data
-	fileName = settings['session_id'] + data.getDateStr()
-	dataFile = open('data/'+fileName+'.csv', 'w')  # a simple text file with 'comma-separated-values'
-	dataFile.write('Eccentricity,Orientation,Trial,Contrast,Frequency,Correct\n')
+def setupDataFile(config):
+	filename = os.path.join('data', config['session_id'] + data.getDateStr() + '.csv')
+	logging.debug(f'Starting data file {filename}')
 
-	return dataFile
+	dataFile = open(filename, 'w')  # a simple text file with 'comma-separated-values'
+	dataFile.write('Eccentricity,Orientation,PeakSensitivity,PeakFrequency,LogBandwidth,LogDelta\n')
+	dataFile.close()
+
+	return filename
+
+def writeOutput(filename, eccentricity, orientation, parameterEstimates):
+	logging.info(f'Saving record to {filename}, e={eccentricity}, o={orientation}, p={parameterEstimates}')
+
+	dataFile = open(filename, 'a')  # a simple text file with 'comma-separated-values'
+	dataFile.write(f'{eccentricity},{orientation},{parameterEstimates[0]},{parameterEstimates[1]},{parameterEstimates[2]},{parameterEstimates[3]}\n')
+	dataFile.close()
 
 def setupStepHandler():
 	stimulusSpace = numpy.array([
@@ -42,16 +55,20 @@ def setupStepHandler():
 
 	return qcsf.QCSF(stimulusSpace, parameterSpace)
 
-def showIntro(win, settings):
-	key1 = settings['first_stimulus_key']
-	key2 = settings['second_stimulus_key']
+def showIntro(win, config, firstTime=False):
+	key1 = config['first_stimulus_key']
+	key2 = config['second_stimulus_key']
 
 	instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
 	instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
 	instructions += 'If the stimulus appeared during the FIRST tone, press [' + key1.upper() + '].\n'
 	instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
+	instructions += 'During the process, keep your gaze fixated on the small cross at the center of the screen.\n\n'
 	instructions += 'If you are uncertain, make a guess.\n\n\nPress any key to start.'
 	
+	if not firstTime:
+		instructions = 'These instructions are the same as before.\n\n' + instructions
+
 	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=40)
 	instructionsStim.draw()
 
@@ -88,9 +105,9 @@ def getSettings():
 	config = settings.getSettings()
 	for k in ['eccentricities', 'orientations']:
 		if isinstance(config[k], str):
-			config[k] = config[k].split(' ')
+			config[k] = [float(v) for v in config[k].split(' ')]
 		else:
-			config[k] = [config[k]]
+			config[k] = [float(config[k])]
 
 	return config
 
@@ -100,11 +117,17 @@ def getSound(fileName, freq, duration):
 	except ValueError:
 		return sound.Sound(freq, secs=duration, stereo=True)
 
-def runTrials(settings, win, dataFile):
-	key1 = settings['first_stimulus_key']
-	key2 = settings['second_stimulus_key']
+def runTrials(config, win, dataFilename):
+	key1 = config['first_stimulus_key']
+	key2 = config['second_stimulus_key']
 
 	stim = visual.GratingStim(win, contrast=1, sf=6, size=4, mask='gauss')
+	fixationVertices = (
+		(0, -0.5), (0, 0.5),
+		(0, 0),
+		(-0.5, 0), (0.5, 0),
+	)
+	fixationStim = visual.ShapeStim(win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=config['fixation_size']/60.0)
 
 	instructions = 'If the stimulus appeard during the FIRST tone, press [' + key1.upper() + '].\n\n'
 	instructions += 'If the stimulus appeard during the SECOND tone, press [' + key2.upper() + '].\n\n'
@@ -114,27 +137,37 @@ def runTrials(settings, win, dataFile):
 	positiveFeedback = getSound('qCSF/assets/1000Hz_sine_50.wav', 1000, .077)
 	negativeFeedback = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
 
-	eccentricities = settings['eccentricities']
+	eccentricities = config['eccentricities']
 	random.shuffle(eccentricities)
 	logging.debug(f'Eccentricity order: {eccentricities}')
 
 	results = OrderedDict()
 
-	for eccentricity in eccentricities:
-		showIntro(win, settings)
+	for eccentricityIndex,eccentricity in enumerate(eccentricities):
+		showIntro(win, config, eccentricityIndex==0)
 
 		stepHandlers = {}
-		for orientation in settings['orientations']:
+		for orientation in config['orientations']:
 			stepHandlers[orientation] = setupStepHandler()
 		
-		for trial in range(int(settings['trials_per_condition'])):
-			orientations = list(settings['orientations']) # make a copy
+		stim.pos = (
+			numpy.cos(config['stimulus_angle'] * numpy.pi/180.0) * eccentricity,
+			numpy.sin(config['stimulus_angle'] * numpy.pi/180.0) * eccentricity,
+		)
+
+		fixationStim.draw()
+		win.flip()
+		time.sleep(0.5)
+
+		for trial in range(int(config['trials_per_condition'])):
+			orientations = list(config['orientations']) # make a copy
 			random.shuffle(orientations)
 			logging.debug(f'Orientation order: {orientations}')
 
 			for orientation in orientations:
+				fixationStim.autoDraw = True
 				win.flip()
-				time.sleep(.5)
+				time.sleep(.25)
 				stepHandler = stepHandlers[orientation]
 
 				stimParams = stepHandler.next()
@@ -147,7 +180,7 @@ def runTrials(settings, win, dataFile):
 
 				stim.contrast = contrast
 				stim.sf = frequency
-				stim.ori = float(orientation)
+				stim.ori = orientation
 
 				whichStim = int(random.random() * 2)
 				logging.info(f'Correct stimulus = {whichStim+1}')
@@ -157,16 +190,22 @@ def runTrials(settings, win, dataFile):
 
 					win.flip()          # show the stimulus
 					sitmulusTone.play() # play the tone
+					time.sleep(config['stimulus_duration'] / 1000.0)
 					win.flip()          # hide the stimulus
-					time.sleep(0.5)     # pause between stimuli
+					if i < 1:
+						time.sleep(config['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
-				instructionsStim.draw()
+				if config['always_show_help']:
+					instructionsStim.draw()
+					fixationStim.autoDraw = False
+
 				win.flip()
 
 				# get response
 				correct = None
 				while correct is None:
 					keys = event.waitKeys()
+					logging.debug(f'Keys detected: {keys}')
 					if key1 in keys:
 						logging.info(f'User selected key1 ({key1})')
 						correct = (whichStim == 0)
@@ -184,20 +223,23 @@ def runTrials(settings, win, dataFile):
 					logging.debug('Incorrect response')
 					negativeFeedback.play()
 
+				fixationStim.draw()
 				win.flip()
-				logLine = f'{eccentricity},{orientation},{trial},{contrast},{frequency},{correct}'
-				logging.debug(f'Logging: {logLine}')
-				dataFile.write(logLine + '\n')
+				logLine = f'E={eccentricity},O={orientation},T={trial},C={contrast},F={frequency},Correct={correct}'
+				logging.info(f'Response: {logLine}')
 				stepHandler.markResponse(correct)
 
 			logging.debug(f'Done with trial {trial}')
 
 		logging.debug(f'Done with orientation {orientation}')
 		results[eccentricity] = OrderedDict()
-		for orientation in settings['orientations']:
-			results[eccentricity][orientation] = stepHandlers[orientation].getParameterEstimates()
+		for orientation in config['orientations']:
+			result = stepHandlers[orientation].getParameterEstimates()
+			writeOutput(dataFilename, eccentricity, orientation, result)
+			results[eccentricity][orientation] = result
 
 		if eccentricity != eccentricities[-1]:
+			fixationStim.autoDraw = False
 			logging.debug('Break time')
 			takeABreak(win)
 
@@ -205,24 +247,19 @@ def runTrials(settings, win, dataFile):
 	return results
 
 def main():
+	os.makedirs('data', exist_ok=True)
+	os.makedirs('logs', exist_ok=True)
+
 	logFile = f'logs/{platform.node()}-{data.getDateStr()}.log'
 	logging.basicConfig(filename=logFile, level=logging.DEBUG)
 
-	os.makedirs('data', exist_ok=True)
-
-	allSettings = getSettings()
-	mon, win = setupMonitor(allSettings)
-	dataFile = setupOutput(allSettings)
-
 	sound.init()
-	parameterEstimates = runTrials(allSettings, win, dataFile)
+	config = getSettings()
+	mon, win = setupMonitor(config)
+	dataFilename = setupDataFile(config)
+	parameterEstimates = runTrials(config, win, dataFilename)
 
-	print('*************')
-	print(parameterEstimates)
-	print('*************')
-	dataFile.close()
 	win.close()
-
 	core.quit()
 
 main()
