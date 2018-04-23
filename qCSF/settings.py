@@ -80,12 +80,7 @@ def getSettings(save=True):
 		for _,section in savedInfo.items():
 			for k,v in section.items():
 				if k != 'session_id':
-					if isinstance(settings[k], bool):
-						settings[k] = v[0] in '1tTyY'
-					elif isinstance(settings[k], (float, int)):
-						settings[k] = float(v)
-					else:
-						settings[k] = v
+					settings[k] = v
 	except:  # if not there then use a default set
 		pass
 
@@ -99,6 +94,8 @@ def getSettings(save=True):
 					settings[k] = int(settings[k])
 			except ValueError:
 				settings[k] = v
+
+	fixTypes(settings, settingGroups)
 
 	# GUI
 	if not settings['skip_settings_dialog']:
@@ -149,6 +146,20 @@ def getSettings(save=True):
 			savedInfo.write(configfile)
 
 	return settings
+
+def fixTypes(settings, settingGroups):
+	for _, fields in settingGroups.items():
+		for field in fields:
+			label, originalValue = field
+			fieldName = labelToFieldName(label)
+			if type(settings[fieldName]) != type(originalValue):
+				if isinstance(originalValue, bool):
+					settings[fieldName] = str(settings[fieldName])[0] in '1tTyY'
+				elif isinstance(originalValue, float):
+					settings[fieldName] = float(settings[fieldName])
+				elif isinstance(originalValue, int):
+					settings[fieldName] = int(settings[fieldName])
+
 
 if __name__ == '__main__':
 	settings = getSettings()
