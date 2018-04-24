@@ -175,7 +175,7 @@ def runTrials(config, win):
 				time.sleep(.25)
 				stepHandler = stepHandlers[orientation]
 
-				stimParams = stepHandler.next()
+				stimParams = stepHandler.next()[0]
 				if stimParams[0] == 0:
 					contrast = 1
 				else:
