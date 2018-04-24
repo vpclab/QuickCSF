@@ -116,11 +116,19 @@ def getSettings():
 
 	return config
 
-def getSound(fileName, freq, duration):
+def getSound(filename, freq, duration):
+	if getattr(sys, 'frozen', False):
+		rootDir = sys._MEIPASS
+	else:
+		rootDir = os.path.dirname(os.path.abspath(__file__))
+
+	filename = os.path.join(rootDir, filename)
+
 	try:
-		return sound.Sound(fileName, stereo=True)
+		return sound.Sound(filename)
 	except ValueError:
-		return sound.Sound(freq, secs=duration, stereo=True)
+		logging.warning(f'Failed to load sound file: {filename}. Synthesizing sound instead.')
+		return sound.Sound(freq, secs=duration)
 
 def runTrials(config, win):
 	key1 = config['first_stimulus_key']
@@ -263,7 +271,6 @@ def runTrials(config, win):
 
 def main():
 	os.makedirs('data', exist_ok=True)
-	os.makedirs('logs', exist_ok=True)
 
 	config = getSettings()
 	config['start_time'] = data.getDateStr()
