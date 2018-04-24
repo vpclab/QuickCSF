@@ -15,8 +15,16 @@ def mapStimParams(params, exponify=False):
 	return numpy.stack((sensitivity, frequency))
 
 
-# Returns logs of the things
 def mapCSFParams(params, exponify=False):
+	'''
+		Maps parameter indices to log values
+
+		Exponify will de-log them, leaving the following units:
+			Peak Sensitivity: 1/contrast
+			Peak Frequency: cycles per degree
+			Bandwidth: octaves
+			Delta: 1/contrast (Difference between Peak Sensitivity and the truncation)
+	'''
 	peakSensitivity = 0.1*params[:,0] + 0.3
 	peakFrequency = -0.7 + 0.1*params[:,1]
 	bandwidth = 0.05 * params[:,2]
@@ -24,10 +32,12 @@ def mapCSFParams(params, exponify=False):
 	delta = numpy.power(10, logDelta)
 
 	if exponify:
+		deltaDiff = numpy.power(10, peakSensitivity-delta)
+
 		peakSensitivity = numpy.power(10, peakSensitivity)
 		peakFrequency = numpy.power(10, peakFrequency)
-		#bandwidth = numpy.power(10, bandwidth)
-		#delta = numpy.power(10, delta)
+		bandwidth = numpy.power(10, bandwidth)
+		delta = peakSensitivity - deltaDiff
 
 	return numpy.stack((peakSensitivity, peakFrequency, bandwidth, delta))
 
@@ -231,8 +241,6 @@ class QCSF():
 		truthData = numpy.power(10, truthData)
 		estimatedData = numpy.power(10, estimatedData)
 
-		data = numpy.concatenate((truthData, estimatedData), 1)
-
 		positives = {'c':[], 'f':[]}
 		negatives = {'c':[], 'f':[]}
 
@@ -249,7 +257,8 @@ class QCSF():
 				negatives['f'].append(stimValues.item(1))
 
 		# plot all of the data
-		graph.plot(frequencyDomain, data, marker='o')
+		truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
+		estimatedLine, = graph.plot(frequencyDomain, estimatedData, linewidth=2.5)
 		graph.plot(positives['f'], positives['c'], 'g^')
 		graph.plot(negatives['f'], negatives['c'], 'rv')
 
@@ -259,7 +268,7 @@ class QCSF():
 		graph.set_xticks([1, 2, 4, 8, 16, 32])
 		graph.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
-		graph.set_ylabel('Contrast sensitivity')
+		graph.set_ylabel('Sensitivity (1/contrast)')
 		graph.set_yscale('log')
 		graph.set_ylim((0.5, 400))
 		graph.set_yticks([2, 10, 50, 200])
@@ -270,11 +279,13 @@ class QCSF():
 		if showNumbers:
 			trueParams = mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
 			trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
-			graph.text(0.6, 1, f'Actual    : {trueParams}', fontweight='bold')
+			truthLine.set_label(f'Truth: {trueParams}')
 
 			paramEstimates = qcsf.getBestParameters().tolist()[0]
 			paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(paramEstimates)
-			graph.text(0.6, .6, f'Estimate: {paramEstimates}', fontweight='bold')
+			estimatedLine.set_label(f'Estim: {paramEstimates}')
+
+			graph.legend()
 
 		plt.pause(0.001) # necessary for non-blocking graphing
 
@@ -291,6 +302,8 @@ if __name__ == '__main__':
 
 	saveImages = False
 	indexLookupFixed = False
+	perfectResponsesOnly = False
+
 
 	pathlib.Path('logs').mkdir(parents=True, exist_ok=True) 
 
@@ -320,7 +333,7 @@ if __name__ == '__main__':
 			numpy.arange(0, 21)		# Low frequency truncation (log delta)
 		])
 
-	unmappedTrueParams = numpy.array([[20, 11, 8, 11]])
+	unmappedTrueParams = numpy.array([[20, 11, 12, 11]])
 	qcsf = QCSF(stimulusSpace, parameterSpace)
 
 	fig = plt.figure()
@@ -331,7 +344,6 @@ if __name__ == '__main__':
 
 	qcsf.visual(qcsf, unmappedTrueParams)
 
-	perfectResponsesOnly = True
 	# Trial loop
 	for i in range(50):
 		# Get the next stimulus
@@ -353,7 +365,8 @@ if __name__ == '__main__':
 		# Update the plot
 		graph.clear()
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
-		qcsf.visual(qcsf, unmappedTrueParams, (i+1)%5==0)
+		#qcsf.visual(qcsf, unmappedTrueParams, (i+1)%5==0)
+		qcsf.visual(qcsf, unmappedTrueParams, True)
 
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
