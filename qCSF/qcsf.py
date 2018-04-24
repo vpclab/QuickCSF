@@ -219,7 +219,7 @@ class QCSF():
 			return mapCSFParams(estimatedParamMeans, True).T
 
 	# Plot the current state
-	def visual(self, qcsf, unmappedTrueParams):
+	def visual(self, qcsf, unmappedTrueParams, showNumbers=False):
 		estimatedParamMeans = qcsf.getBestParameters(leaveAsIndices=True)
 		frequencyDomain = numpy.arange(qcsf.stimulusRanges[1]).reshape(-1,1)
 
@@ -267,13 +267,14 @@ class QCSF():
 
 		graph.grid()
 
-		trueParams = mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
-		trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
-		graph.text(0.6, 1, f'Actual    : {trueParams}', fontweight='bold')
+		if showNumbers:
+			trueParams = mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
+			trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
+			graph.text(0.6, 1, f'Actual    : {trueParams}', fontweight='bold')
 
-		paramEstimates = qcsf.getBestParameters().tolist()[0]
-		paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(paramEstimates)
-		graph.text(0.6, .6, f'Estimate: {paramEstimates}', fontweight='bold')
+			paramEstimates = qcsf.getBestParameters().tolist()[0]
+			paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(paramEstimates)
+			graph.text(0.6, .6, f'Estimate: {paramEstimates}', fontweight='bold')
 
 		plt.pause(0.001) # necessary for non-blocking graphing
 
@@ -330,9 +331,9 @@ if __name__ == '__main__':
 
 	qcsf.visual(qcsf, unmappedTrueParams)
 
-	perfectResponsesOnly = False
+	perfectResponsesOnly = True
 	# Trial loop
-	for i in range(10):
+	for i in range(50):
 		# Get the next stimulus
 		newStimValues = qcsf.next()
 
@@ -352,7 +353,7 @@ if __name__ == '__main__':
 		# Update the plot
 		graph.clear()
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
-		qcsf.visual(qcsf, unmappedTrueParams)
+		qcsf.visual(qcsf, unmappedTrueParams, (i+1)%5==0)
 
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
