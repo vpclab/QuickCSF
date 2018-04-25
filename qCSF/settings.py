@@ -11,21 +11,18 @@ settingGroups = {
 	'General settings': [ 
 		['Session ID', ''],
 		['Skip settings dialog', False],
-		['Always show help', False],
-		['Data filename', 'data/PCD_{start_time}_Day1_{session_id}'],
+		['Data filename', 'data/PCSF_{start_time}_Day1_{session_id}'],
 	],
 	'Display settings': [
 		['Monitor width (cm)', 40],
 		['Monitor distance (cm)', 57],
 		['Fixation size (arcmin)', 20],
 	],
-	'Experiment settings': [
-		['Trials per condition', 25],
+	'Stimuli settings': [
 		['Eccentricities (degrees)', '4 8 12'],
 		['Orientations (degrees)', '45 67.5 90 112.5 135'],
-	],
-	'Stimuli settings': [
-		['Stimulus angle (degrees)', 45],
+		['Stimulus position angles (degrees)', '45 135 225 315'],
+		['Sets per stimulus config', 9],
 		['Stimulus duration (ms)', 200],
 		['Time between stimuli (ms)', 500],
 	],

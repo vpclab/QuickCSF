@@ -1,4 +1,4 @@
-import os, platform
+import sys, os, platform
 import argparse
 import time, random
 import logging
@@ -15,112 +15,23 @@ import numpy
 
 import qcsf, settings
 
-def setupMonitor(settings):
-	mon = monitors.Monitor('testMonitor')
-	mon.setDistance(settings['monitor_distance'])  # Measure first to ensure this is correct
-	mon.setWidth(settings['monitor_width'])  # Measure first to ensure this is correct
+class Trial():
+	def __init__(self, eccentricity, orientation, stimPositionAngle):
+		self.eccentricity = eccentricity
+		self.orientation = orientation
+		self.stimPositionAngle = stimPositionAngle
 
-	win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
+	def __str__(self):
+		return self.__repr__()
 
-	return mon, win
-
-def setupDataFile(config):
-	filename = config['data_filename'].format(**config) + '.csv'
-	logging.info(f'Starting data file {filename}')
-
-	if not os.path.exists(filename):
-		dataFile = open(filename, 'w')
-		dataFile.write('Eccentricity,Orientation,PeakSensitivity,PeakFrequency,LogBandwidth,LogDelta\n')
-		dataFile.close()
-
-	return filename
-
-def writeOutput(config, eccentricity, orientation, parameterEstimates):
-	filename = config['data_filename'].format(**config) + '.csv'
-	logging.debug(f'Saving record to {filename}, e={eccentricity}, o={orientation}, p={parameterEstimates}')
-
-	dataFile = open(filename, 'a')  # a simple text file with 'comma-separated-values'
-	dataFile.write(f'{eccentricity},{orientation},{parameterEstimates[0]},{parameterEstimates[1]},{parameterEstimates[2]},{parameterEstimates[3]}\n')
-	dataFile.close()
-
-def setupStepHandler():
-	stimulusSpace = numpy.array([
-		numpy.arange(0, 31),	# Contrast
-		numpy.arange(0, 24),	# Frequency
-	])
-	parameterSpace = numpy.array([
-		numpy.arange(0, 28),	# Peak sensitivity
-		numpy.arange(0, 21),	# Peak frequency
-		numpy.arange(0, 21),	# Log bandwidth
-		numpy.arange(0, 21)		# Low frequency truncation (log delta)
-	])
-
-	return qcsf.QCSF(stimulusSpace, parameterSpace)
-
-def showIntro(win, config, firstTime=False):
-	key1 = config['first_stimulus_key']
-	key2 = config['second_stimulus_key']
-
-	instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
-	instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
-	instructions += 'If the stimulus appeared during the FIRST tone, press [' + key1.upper() + '].\n'
-	instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
-	instructions += 'During the process, keep your gaze fixated on the small cross at the center of the screen.\n\n'
-	instructions += 'If you are uncertain, make a guess.\n\n\nPress any key to start.'
-	
-	if not firstTime:
-		instructions = 'These instructions are the same as before.\n\n' + instructions
-
-	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=40)
-	instructionsStim.draw()
-
-	win.flip()
-
-	keys = event.waitKeys()
-	if 'escape' in keys:
-		core.quit()
-
-def takeABreak(win, waitForKey=True):
-	instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
-	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
-	instructionsStim.draw()
-
-	win.flip()
-
-	keys = []
-	while waitForKey and (not 'space' in keys):
-		keys = event.waitKeys()
-		if 'escape' in keys:
-			core.quit()
-
-def showFinishedMessage(win):
-	instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
-	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
-	instructionsStim.draw()
-
-	win.flip()
-
-	keys = []
-	while not 'space' in keys:
-		keys = event.waitKeys()
-		if 'escape' in keys:
-			core.quit()
-
-def getSettings():
-	config = settings.getSettings()
-	for k in ['eccentricities', 'orientations']:
-		if isinstance(config[k], str):
-			config[k] = [float(v) for v in config[k].split(' ')]
-		else:
-			config[k] = [float(config[k])]
-
-	return config
+	def __repr__(self):
+		return f'Trial(e={self.eccentricity},o={self.orientation},a={self.stimPositionAngle})'
 
 def getSound(filename, freq, duration):
 	if getattr(sys, 'frozen', False):
 		rootDir = sys._MEIPASS
 	else:
-		rootDir = os.path.dirname(os.path.abspath(__file__))
+		rootDir = '.'
 
 	filename = os.path.join(rootDir, filename)
 
@@ -130,162 +41,267 @@ def getSound(filename, freq, duration):
 		logging.warning(f'Failed to load sound file: {filename}. Synthesizing sound instead.')
 		return sound.Sound(freq, secs=duration)
 
-def runTrials(config, win):
-	key1 = config['first_stimulus_key']
-	key2 = config['second_stimulus_key']
+def getConfig():
+	config = settings.getSettings()
+	for k in ['eccentricities', 'orientations', 'stimulus_position_angles']:
+		if isinstance(config[k], str):
+			config[k] = [float(v) for v in config[k].split(' ')]
+		else:
+			config[k] = [float(config[k])]
 
-	stim = visual.GratingStim(win, contrast=1, sf=6, size=4, mask='gauss')
-	fixationVertices = (
-		(0, -0.5), (0, 0.5),
-		(0, 0),
-		(-0.5, 0), (0.5, 0),
-	)
-	fixationStim = visual.ShapeStim(win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=config['fixation_size']/60.0)
-
-	instructions = 'If the stimulus appeard during the FIRST tone, press [' + key1.upper() + '].\n\n'
-	instructions += 'If the stimulus appeard during the SECOND tone, press [' + key2.upper() + '].\n\n'
-	instructionsStim = visual.TextStim(win, text=instructions, color=-1, wrapWidth=20)
-
-	sitmulusTone = getSound('qCSF/assets/300Hz_sine_25.wav', 300, .2)
-	positiveFeedback = getSound('qCSF/assets/1000Hz_sine_50.wav', 1000, .077)
-	negativeFeedback = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
-
-	eccentricities = config['eccentricities']
-	random.shuffle(eccentricities)
-	logging.debug(f'Eccentricity order: {eccentricities}')
-
-	results = OrderedDict()
-
-	for eccentricityIndex,eccentricity in enumerate(eccentricities):
-		showIntro(win, config, eccentricityIndex==0)
-
-		stepHandlers = {}
-		for orientation in config['orientations']:
-			stepHandlers[orientation] = setupStepHandler()
-		
-		stim.pos = (
-			numpy.cos(config['stimulus_angle'] * numpy.pi/180.0) * eccentricity,
-			numpy.sin(config['stimulus_angle'] * numpy.pi/180.0) * eccentricity,
-		)
-
-		fixationStim.draw()
-		win.flip()
-		time.sleep(0.5)
-
-		for trial in range(config['trials_per_condition']):
-			orientations = list(config['orientations']) # make a copy
-			random.shuffle(orientations)
-			logging.debug(f'Orientation order: {orientations}')
-
-			for orientationIndex,orientation in enumerate(orientations):
-				fixationStim.autoDraw = True
-				win.flip()
-				time.sleep(.25)
-				stepHandler = stepHandlers[orientation]
-
-				stimParams = stepHandler.next()[0]
-				if stimParams[0] == 0:
-					contrast = 1
-				else:
-					contrast = 1/stimParams[0] # convert sensitivity to contrast
-
-				frequency = stimParams[1]
-				logging.info(f'Presenting contrast={contrast}, frequency={frequency}, orientation={orientation}')
-
-				# These parameters are indices - not real values. They must be mapped
-				stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
-
-				stim.contrast = contrast
-				stim.sf = frequency
-				stim.ori = orientation
-
-				whichStim = int(random.random() * 2)
-				logging.info(f'Correct stimulus = {whichStim+1}')
-				for i in range(2):
-					if whichStim == i:
-						stim.draw()
-
-					win.flip()          # show the stimulus
-					sitmulusTone.play() # play the tone
-					time.sleep(config['stimulus_duration'] / 1000.0)
-					win.flip()          # hide the stimulus
-					if i < 1:
-						time.sleep(config['time_between_stimuli'] / 1000.0)     # pause between stimuli
-
-				if config['always_show_help']:
-					instructionsStim.draw()
-					fixationStim.autoDraw = False
-
-				win.flip()
-
-				# get response
-				correct = None
-				while correct is None:
-					keys = event.waitKeys()
-					logging.debug(f'Keys detected: {keys}')
-					if key1 in keys:
-						logging.info(f'User selected key1 ({key1})')
-						correct = (whichStim == 0)
-					if key2 in keys:
-						logging.info(f'User selected key1 ({key2})')
-						correct = (whichStim == 1)
-					if 'q' in keys or 'escape' in keys:
-						core.quit()
-					event.clearEvents()  # clear other (eg mouse) events - they clog the buffer
-
-				if correct:
-					logging.debug('Correct response')
-					positiveFeedback.play()
-				else:
-					logging.debug('Incorrect response')
-					negativeFeedback.play()
-
-				win.flip()
-				logLine = f'E={eccentricity},O={orientation},T={trial},C={contrast},F={frequency},Correct={correct}'
-				logging.info(f'Response: {logLine}')
-				stepHandler.markResponse(correct)
-
-			if trial == config['trials_per_condition']-1: #if it's the last orientation for this eccentricity
-				if eccentricity != eccentricities[-1]:
-					fixationStim.autoDraw = False
-					takeABreak(win, False)
-			else:
-				fixationStim.draw()
-
-			logging.debug(f'Done with trial {trial}')
-
-		logging.debug(f'Done with orientation {orientation}')
-		results[eccentricity] = OrderedDict()
-		for orientation in config['orientations']:
-			result = stepHandlers[orientation].getParameterEstimates()
-			writeOutput(config, eccentricity, orientation, result)
-			results[eccentricity][orientation] = result
-
-		fixationStim.autoDraw = False
-		if eccentricity != eccentricities[-1]:
-			logging.debug('Break time')
-			takeABreak(win)
-
-	logging.debug('User is done!')
-	return results
-
-def main():
-	os.makedirs('data', exist_ok=True)
-
-	config = getSettings()
+	config['sitmulusTone'] = getSound('qCSF/assets/300Hz_sine_25.wav', 300, .2)
+	config['positiveFeedback'] = getSound('qCSF/assets/1000Hz_sine_50.wav', 1000, .077)
+	config['negativeFeedback'] = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
 	config['start_time'] = data.getDateStr()
 
-	logFile = config['data_filename'].format(**config) + '.log'
-	logging.basicConfig(filename=logFile, level=logging.DEBUG)
+	return config
 
-	sound.init()
-	mon, win = setupMonitor(config)
-	setupDataFile(config)
-	parameterEstimates = runTrials(config, win)
 
-	showFinishedMessage(win)
+class PeripheralCSFTester():
+	def __init__(self, config):
+		os.makedirs('data', exist_ok=True)
 
-	win.close()
-	core.quit()
+		self.config = config
 
-main()
+		logFile = self.config['data_filename'].format(**self.config) + '.log'
+		logging.basicConfig(filename=logFile, level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+		sound.init()
+
+		self.setupMonitor()
+		self.setupDataFile()
+		
+		self.setupBlocks()
+
+	def setupMonitor(self):
+		self.mon = monitors.Monitor('testMonitor')
+		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct
+		self.mon.setWidth(self.config['monitor_width'])  # Measure first to ensure this is correct
+
+		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
+
+		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=4, mask='gauss')
+		fixationVertices = (
+			(0, -0.5), (0, 0.5),
+			(0, 0),
+			(-0.5, 0), (0.5, 0),
+		)
+		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
+
+	def setupDataFile(self):
+		self.dataFilename = self.config['data_filename'].format(**self.config) + '.csv'
+		logging.info(f'Starting data file {self.dataFilename}')
+
+		if not os.path.exists(self.dataFilename):
+			dataFile = open(self.dataFilename, 'w')
+			dataFile.write('Eccentricity,Orientation,PeakSensitivity,PeakFrequency,Bandwidth,Delta\n')
+			dataFile.close()
+
+	def writeOutput(self, eccentricity, orientation, parameterEstimates):
+		logging.debug(f'Saving record to {self.dataFilename}, e={eccentricity}, o={orientation}, p={parameterEstimates.T}')
+
+		dataFile = open(self.dataFilename, 'a')  # a simple text file with 'comma-separated-values'
+		dataFile.write(f'{eccentricity},{orientation},{parameterEstimates[0]},{parameterEstimates[1]},{parameterEstimates[2]},{parameterEstimates[3]}\n')
+		dataFile.close()
+
+	def setupStepHandler(self):
+		stimulusSpace = numpy.array([
+			numpy.arange(0, 31),	# Contrast
+			numpy.arange(0, 24),	# Frequency
+		])
+		parameterSpace = numpy.array([
+			numpy.arange(0, 28),	# Peak sensitivity
+			numpy.arange(0, 21),	# Peak frequency
+			numpy.arange(0, 21),	# Log bandwidth
+			numpy.arange(0, 21)		# Low frequency truncation (log delta)
+		])
+
+		return qcsf.QCSF(stimulusSpace, parameterSpace)
+
+	def showInstructions(self, firstTime=False):
+		key1 = self.config['first_stimulus_key']
+		key2 = self.config['second_stimulus_key']
+
+		instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
+		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
+		instructions += 'If the stimulus appeared during the FIRST tone, press [' + key1.upper() + '].\n'
+		instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
+		instructions += 'During the process, keep your gaze fixated on the small cross at the center of the screen.\n\n'
+		instructions += 'If you are uncertain, make a guess.\n\n\nPress any key to start.'
+		
+		if not firstTime:
+			instructions = 'These instructions are the same as before.\n\n' + instructions
+
+		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=40)
+		instructionsStim.draw()
+
+		self.win.flip()
+
+		keys = event.waitKeys()
+		if 'escape' in keys:
+			core.quit()
+
+	def takeABreak(self, waitForKey=True):
+		instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
+		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=20)
+		instructionsStim.draw()
+
+		self.win.flip()
+
+		keys = []
+		while waitForKey and (not 'space' in keys):
+			keys = event.waitKeys()
+			if 'escape' in keys:
+				core.quit()
+
+	def showFinishedMessage(self):
+		instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
+		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=20)
+		instructionsStim.draw()
+
+		self.win.flip()
+
+		keys = []
+		while not 'space' in keys:
+			keys = event.waitKeys()
+			if 'escape' in keys:
+				core.quit()
+
+	def checkResponse(self, whichStim):
+		key1 = self.config['first_stimulus_key']
+		key2 = self.config['second_stimulus_key']
+
+		correct = None
+		while correct is None:
+			keys = event.waitKeys()
+			logging.debug(f'Keys detected: {keys}')
+			if key1 in keys:
+				logging.info(f'User selected key1 ({key1})')
+				correct = (whichStim == 0)
+			if key2 in keys:
+				logging.info(f'User selected key1 ({key2})')
+				correct = (whichStim == 1)
+			if 'q' in keys or 'escape' in keys:
+				core.quit()
+			event.clearEvents()
+
+		return correct
+
+	def setupBlocks(self):
+		'''
+			blocks = [
+				{'eccentricity': x, 'trials': [trial, trial, trial]},
+				{'eccentricity': y, 'trials': [trial, trial, trial]},
+				...
+			]
+		'''
+		self.blocks = []
+		for eccentricity in self.config['eccentricities']:
+			block = {
+				'eccentricity': eccentricity,
+				'trials': [],
+			}
+			for orientation in self.config['orientations']:
+				for angle in self.config['stimulus_position_angles']:
+					for setNumber in range(self.config['sets_per_stimulus_config']):
+						block['trials'].append(Trial(eccentricity, orientation, angle))
+				
+			random.shuffle(block['trials'])
+			self.blocks.append(block)
+
+		random.shuffle(self.blocks)
+		
+		for block in self.blocks:
+			logging.debug('Block eccentricity: {eccentricity}'.format(**block))
+			for trial in block['trials']:
+				logging.debug(f'\t{trial}')
+
+	def runBlocks(self):
+		for blockCounter, block in enumerate(self.blocks):
+			# Setup a step handler for each orientation
+			stepHandlers = {}
+			for orientation in self.config['orientations']:
+				stepHandlers[orientation] = self.setupStepHandler()
+
+			# Show instructions
+			self.showInstructions(blockCounter==0)
+			# Run each trial in this block
+			for trial in block['trials']:
+				self.runTrial(trial, stepHandlers[trial.orientation])
+
+			# Write output
+			for orientation in self.config['orientations']:
+				result = stepHandlers[orientation].getBestParameters().T
+				self.writeOutput(block['eccentricity'], orientation, result)
+
+			# Take a break if it's time
+			self.fixationStim.autoDraw = False
+			if blockCounter < len(self.blocks)-1:
+				logging.debug('Break time')
+				self.takeABreak()
+
+		logging.debug('User is done!')
+
+	def runTrial(self, trial, stepHandler):
+		self.fixationStim.autoDraw = True
+		self.win.flip()
+		time.sleep(.25)
+
+		stimParams = stepHandler.next()[0]
+		# These parameters are indices - not real values. They must be mapped
+		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
+
+		if stimParams[0] == 0:
+			contrast = 1
+		else:
+			contrast = 1/stimParams[0] # convert sensitivity to contrast
+
+		frequency = stimParams[1]
+		logging.info(f'Presenting ecc={trial.eccentricity}, orientation={trial.orientation}, contrast={contrast}, frequency={frequency}, positionAngle={trial.stimPositionAngle}')
+
+		self.stim.contrast = contrast
+		self.stim.sf = frequency
+		self.stim.ori = trial.orientation
+		self.stim.pos = (
+			numpy.cos(trial.stimPositionAngle * numpy.pi/180.0) * trial.eccentricity,
+			numpy.sin(trial.stimPositionAngle * numpy.pi/180.0) * trial.eccentricity,
+		)
+
+		whichStim = int(random.random() * 2)
+		logging.info(f'Correct stimulus = {whichStim+1}')
+		for i in range(2):
+			if whichStim == i:
+				self.stim.draw()
+
+			self.win.flip()          # show the stimulus
+			self.config['sitmulusTone'].play() # play the tone
+			time.sleep(self.config['stimulus_duration'] / 1000.0)
+			self.win.flip()          # hide the stimulus
+			if i < 1:
+				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
+
+		self.win.flip()
+
+		correct = self.checkResponse(whichStim)
+		if correct:
+			logging.debug('Correct response')
+			self.config['positiveFeedback'].play()
+		else:
+			logging.debug('Incorrect response')
+			self.config['negativeFeedback'].play()
+
+		self.win.flip()
+		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
+		logging.info(f'Response: {logLine}')
+		stepHandler.markResponse(correct)
+
+	def start(self):
+		self.runBlocks()
+		self.showFinishedMessage()
+
+		self.win.close()
+		core.quit()
+
+config = getConfig()
+tester = PeripheralCSFTester(config)
+tester.start()
