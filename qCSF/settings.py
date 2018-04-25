@@ -9,9 +9,9 @@ import configparser
 
 settingGroups = {
 	'General settings': [ 
-		['Session ID', ''],
+		['Session ID (ex: Day1_Initials)', ''],
 		['Skip settings dialog', False],
-		['Data filename', 'data/PCSF_{start_time}_Day1_{session_id}'],
+		['Data filename', 'data/PCSF_{start_time}_{session_id}'],
 	],
 	'Display settings': [
 		['Monitor width (cm)', 40],
@@ -22,9 +22,10 @@ settingGroups = {
 		['Eccentricities (degrees)', '4 8 12'],
 		['Orientations (degrees)', '45 67.5 90 112.5 135'],
 		['Stimulus position angles (degrees)', '45 135 225 315'],
-		['Sets per stimulus config', 9],
-		['Stimulus duration (ms)', 200],
-		['Time between stimuli (ms)', 500],
+		['Trials per stimulus config', 24],
+		['Stimulus duration (ms)', 100],
+		['Time between stimuli (ms)', 1000],
+		['Contrast overrides', ''],
 	],
 	'Input settings': [
 		['First stimulus key', 'left'],

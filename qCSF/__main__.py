@@ -43,15 +43,15 @@ def getSound(filename, freq, duration):
 
 def getConfig():
 	config = settings.getSettings()
-	for k in ['eccentricities', 'orientations', 'stimulus_position_angles']:
+	for k in ['eccentricities', 'orientations', 'stimulus_position_angles', 'contrast_overrides']:
 		if isinstance(config[k], str):
-			config[k] = [float(v) for v in config[k].split(' ')]
+			config[k] = [float(v) for v in config[k].split()]
 		else:
 			config[k] = [float(config[k])]
 
-	config['sitmulusTone'] = getSound('qCSF/assets/300Hz_sine_25.wav', 300, .2)
+	config['sitmulusTone'] = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
+	config['negativeFeedback'] = getSound('qCSF/assets/300Hz_sine_25.wav', 300, .2)
 	config['positiveFeedback'] = getSound('qCSF/assets/1000Hz_sine_50.wav', 1000, .077)
-	config['negativeFeedback'] = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
 	config['start_time'] = data.getDateStr()
 
 	return config
@@ -105,9 +105,10 @@ class PeripheralCSFTester():
 		dataFile.close()
 
 	def setupStepHandler(self):
+		# Maximums lowered for older adults
 		stimulusSpace = numpy.array([
-			numpy.arange(0, 31),	# Contrast
-			numpy.arange(0, 24),	# Frequency
+			numpy.arange(0, 24),	# Contrast  
+			numpy.arange(0, 20),	# Frequency
 		])
 		parameterSpace = numpy.array([
 			numpy.arange(0, 28),	# Peak sensitivity
@@ -139,7 +140,7 @@ class PeripheralCSFTester():
 
 		keys = event.waitKeys()
 		if 'escape' in keys:
-			core.quit()
+			raise Exception('User asked to quit.')
 
 	def takeABreak(self, waitForKey=True):
 		instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
@@ -152,7 +153,7 @@ class PeripheralCSFTester():
 		while waitForKey and (not 'space' in keys):
 			keys = event.waitKeys()
 			if 'escape' in keys:
-				core.quit()
+				raise Exception('User asked to quit.')
 
 	def showFinishedMessage(self):
 		instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
@@ -164,8 +165,6 @@ class PeripheralCSFTester():
 		keys = []
 		while not 'space' in keys:
 			keys = event.waitKeys()
-			if 'escape' in keys:
-				core.quit()
 
 	def checkResponse(self, whichStim):
 		key1 = self.config['first_stimulus_key']
@@ -182,7 +181,7 @@ class PeripheralCSFTester():
 				logging.info(f'User selected key1 ({key2})')
 				correct = (whichStim == 1)
 			if 'q' in keys or 'escape' in keys:
-				core.quit()
+				raise Exception('User asked to quit.')
 			event.clearEvents()
 
 		return correct
@@ -202,9 +201,14 @@ class PeripheralCSFTester():
 				'trials': [],
 			}
 			for orientation in self.config['orientations']:
-				for angle in self.config['stimulus_position_angles']:
-					for setNumber in range(self.config['sets_per_stimulus_config']):
-						block['trials'].append(Trial(eccentricity, orientation, angle))
+				possibleAngles = []
+
+				for configTrial in range(self.config['trials_per_stimulus_config']):
+					if len(possibleAngles) == 0:
+						possibleAngles = list(self.config['stimulus_position_angles'])
+						random.shuffle(possibleAngles)
+
+					block['trials'].append(Trial(eccentricity, orientation, possibleAngles.pop()))
 				
 			random.shuffle(block['trials'])
 			self.blocks.append(block)
@@ -251,15 +255,18 @@ class PeripheralCSFTester():
 		# These parameters are indices - not real values. They must be mapped
 		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
 
-		if stimParams[0] == 0:
-			contrast = 1
+		if len(config['contrast_overrides']) > 0:
+			# This is usually only used in practice mode
+			contrast = random.choice(config['contrast_overrides'])
 		else:
-			contrast = 1/stimParams[0] # convert sensitivity to contrast
+			if stimParams[0] == 0:
+				contrast = 1
+			else:
+				contrast = 1/stimParams[0] # convert sensitivity to contrast
 
 		frequency = stimParams[1]
 		logging.info(f'Presenting ecc={trial.eccentricity}, orientation={trial.orientation}, contrast={contrast}, frequency={frequency}, positionAngle={trial.stimPositionAngle}')
 
-		self.stim.contrast = contrast
 		self.stim.sf = frequency
 		self.stim.ori = trial.orientation
 		self.stim.pos = (
@@ -270,11 +277,14 @@ class PeripheralCSFTester():
 		whichStim = int(random.random() * 2)
 		logging.info(f'Correct stimulus = {whichStim+1}')
 		for i in range(2):
-			if whichStim == i:
-				self.stim.draw()
-
-			self.win.flip()          # show the stimulus
 			self.config['sitmulusTone'].play() # play the tone
+			if whichStim == i:
+				self.stim.contrast = contrast
+			else:
+				self.stim.contrast = 0
+
+			self.stim.draw()
+			self.win.flip()          # show the stimulus
 			time.sleep(self.config['stimulus_duration'] / 1000.0)
 			self.win.flip()          # hide the stimulus
 			if i < 1:
@@ -294,9 +304,14 @@ class PeripheralCSFTester():
 		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
+		time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
 	def start(self):
-		self.runBlocks()
+		try:
+			self.runBlocks()
+		except Exception as exc:
+			logging.warning(exc)
+
 		self.showFinishedMessage()
 
 		self.win.close()
