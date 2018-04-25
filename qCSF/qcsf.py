@@ -323,8 +323,10 @@ if __name__ == '__main__':
 		])
 	else:
 		stimulusSpace = numpy.array([
-			numpy.arange(0, 31),	# Contrast
-			numpy.arange(0, 24),	# Frequency
+#			numpy.arange(0, 31),	# Contrast
+#			numpy.arange(0, 24),	# Frequency
+			numpy.arange(0, 24),	# Contrast
+			numpy.arange(0, 20),	# Frequency
 		])
 		parameterSpace = numpy.array([
 			numpy.arange(0, 28),	# Peak sensitivity
