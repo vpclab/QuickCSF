@@ -23,7 +23,7 @@ settingGroups = {
 		['Orientations (degrees)', '45 67.5 90 112.5 135'],
 		['Stimulus position angles (degrees)', '45 135 225 315'],
 		['Trials per stimulus config', 24],
-		['Stimulus duration (ms)', 100],
+		['Stimulus duration (ms)', 200],
 		['Time between stimuli (ms)', 1000],
 		['Contrast overrides', ''],
 	],
