@@ -27,6 +27,10 @@ class Trial():
 	def __repr__(self):
 		return f'Trial(e={self.eccentricity},o={self.orientation},a={self.stimPositionAngle})'
 
+class UserExit(Exception):
+	def __init__(self):
+		super().__init__('User asked to quit.')
+
 def getSound(filename, freq, duration):
 	if getattr(sys, 'frozen', False):
 		rootDir = sys._MEIPASS
@@ -230,8 +234,14 @@ class PeripheralCSFTester():
 			# Show instructions
 			self.showInstructions(blockCounter==0)
 			# Run each trial in this block
-			for trial in block['trials']:
+			for trialCounter,trial in enumerate(block['trials']):
+				self.fixationStim.autoDraw = True
+				self.win.flip()
+				
+				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
+
+			self.fixationStim.autoDraw = False
 
 			# Write output
 			for orientation in self.config['orientations']:
@@ -239,7 +249,6 @@ class PeripheralCSFTester():
 				self.writeOutput(block['eccentricity'], orientation, result)
 
 			# Take a break if it's time
-			self.fixationStim.autoDraw = False
 			if blockCounter < len(self.blocks)-1:
 				logging.debug('Break time')
 				self.takeABreak()
@@ -247,10 +256,6 @@ class PeripheralCSFTester():
 		logging.debug('User is done!')
 
 	def runTrial(self, trial, stepHandler):
-		self.fixationStim.autoDraw = True
-		self.win.flip()
-		time.sleep(.25)
-
 		stimParams = stepHandler.next()[0]
 		# These parameters are indices - not real values. They must be mapped
 		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
@@ -304,14 +309,16 @@ class PeripheralCSFTester():
 		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
-		time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
 	def start(self):
 		try:
 			self.runBlocks()
+		except UserExit as exc:
+			logging.info(exc)
 		except Exception as exc:
 			logging.warning(exc)
 
+		self.fixationStim.autoDraw = False
 		self.showFinishedMessage()
 
 		self.win.close()
