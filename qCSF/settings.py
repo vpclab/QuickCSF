@@ -26,10 +26,11 @@ settingGroups = {
 		['Stimulus duration (ms)', 200],
 		['Time between stimuli (ms)', 1000],
 		['Contrast overrides', ''],
+		['Stimulus size (degrees of visual angle)', 4],
 	],
 	'Input settings': [
-		['First stimulus key', 'left'],
-		['Second stimulus key', 'right']
+		['First stimulus key', 'num_4'],
+		['Second stimulus key', 'num_6']
 	]
 }
 

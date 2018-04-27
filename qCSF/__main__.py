@@ -84,7 +84,7 @@ class PeripheralCSFTester():
 
 		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
 
-		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=4, mask='gauss')
+		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['stimulus_size'], mask='gauss')
 		fixationVertices = (
 			(0, -0.5), (0, 0.5),
 			(0, 0),
@@ -111,7 +111,7 @@ class PeripheralCSFTester():
 	def setupStepHandler(self):
 		# Maximums lowered for older adults
 		stimulusSpace = numpy.array([
-			numpy.arange(0, 24),	# Contrast  
+			numpy.arange(0, 31),	# Contrast
 			numpy.arange(0, 20),	# Frequency
 		])
 		parameterSpace = numpy.array([
