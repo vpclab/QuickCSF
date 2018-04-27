@@ -3,7 +3,7 @@ data/
 logs/
 figs/
 *.psydat
-settings.ini
+qCSF Settings.ini
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
