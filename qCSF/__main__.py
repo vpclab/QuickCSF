@@ -144,7 +144,7 @@ class PeripheralCSFTester():
 
 		keys = event.waitKeys()
 		if 'escape' in keys:
-			raise Exception('User asked to quit.')
+			raise UserExit()
 
 	def takeABreak(self, waitForKey=True):
 		instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
@@ -157,7 +157,7 @@ class PeripheralCSFTester():
 		while waitForKey and (not 'space' in keys):
 			keys = event.waitKeys()
 			if 'escape' in keys:
-				raise Exception('User asked to quit.')
+				raise UserExit()
 
 	def showFinishedMessage(self):
 		instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
@@ -167,7 +167,7 @@ class PeripheralCSFTester():
 		self.win.flip()
 
 		keys = []
-		while not 'space' in keys:
+		while not ('space' in keys or 'escape' in keys):
 			keys = event.waitKeys()
 
 	def checkResponse(self, whichStim):
@@ -185,7 +185,8 @@ class PeripheralCSFTester():
 				logging.info(f'User selected key1 ({key2})')
 				correct = (whichStim == 1)
 			if 'q' in keys or 'escape' in keys:
-				raise Exception('User asked to quit.')
+				raise UserExit()
+
 			event.clearEvents()
 
 		return correct
