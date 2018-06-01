@@ -13,7 +13,7 @@ psychopy.prefs.general['audioLib'] = ['pyo','pygame', 'sounddevice']
 from psychopy import core, visual, gui, data, event, monitors, sound
 import numpy
 
-import qcsf, settings
+import qcsf, settings, assets
 
 class Trial():
 	def __init__(self, eccentricity, orientation, stimPositionAngle):
@@ -32,14 +32,9 @@ class UserExit(Exception):
 		super().__init__('User asked to quit.')
 
 def getSound(filename, freq, duration):
-	if getattr(sys, 'frozen', False):
-		rootDir = sys._MEIPASS
-	else:
-		rootDir = '.'
-
-	filename = os.path.join(rootDir, filename)
-
 	try:
+		filename = os.path.join('assets', 'qCSF', filename)
+		filename = assets.getFilePath(filename)
 		return sound.Sound(filename)
 	except ValueError:
 		logging.warning(f'Failed to load sound file: {filename}. Synthesizing sound instead.')
@@ -47,15 +42,16 @@ def getSound(filename, freq, duration):
 
 def getConfig():
 	config = settings.getSettings()
+	# Each of these are lists of numbers
 	for k in ['eccentricities', 'orientations', 'stimulus_position_angles', 'contrast_overrides']:
 		if isinstance(config[k], str):
 			config[k] = [float(v) for v in config[k].split()]
 		else:
 			config[k] = [float(config[k])]
 
-	config['sitmulusTone'] = getSound('qCSF/assets/600Hz_square_25.wav', 600, .185)
-	config['negativeFeedback'] = getSound('qCSF/assets/300Hz_sine_25.wav', 300, .2)
-	config['positiveFeedback'] = getSound('qCSF/assets/1000Hz_sine_50.wav', 1000, .077)
+	config['sitmulusTone'] = getSound('600Hz_square_25.wav', 600, .185)
+	config['positiveFeedback'] = getSound('1000Hz_sine_50.wav', 1000, .077)
+	config['negativeFeedback'] = getSound('300Hz_sine_25.wav', 300, .2)
 	config['start_time'] = data.getDateStr()
 
 	return config

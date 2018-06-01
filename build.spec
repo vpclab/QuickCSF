@@ -1,13 +1,12 @@
-# -*- mode: python -*-
-
+appName = 'qCSF'
+oneFile = False
 block_cipher = None
 
-
 a = Analysis(
-	['qCSF\\__main__.py'],
-	pathex=['D:\\Seafile\\My Library\\qCSF2'],
+	[f'{appName}\\__main__.py'],
+	pathex=[f'D:\\Seafile\\My Library\\{appName}'],
 	binaries=[],
-	datas=[ ('qCSF/assets/*', 'qCSF/assets') ],
+	datas=[ (f'assets/{appName}/*', f'assets/{appName}') ],
 	hiddenimports=['psychopy', 'psychopy.visual', 'psychopy.visual.shape', 'scipy._lib.messagestream', 'scipy.optimize.minpack2'],
 	hookspath=[],
 	runtime_hooks=[],
@@ -17,24 +16,41 @@ a = Analysis(
 	cipher=block_cipher
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-exe = EXE(
-	pyz,
-	a.scripts,
-	a.binaries,
-	a.zipfiles,
-	a.datas,
-	name='qCSF',
-	debug=False,
-	strip=False,
-	upx=True,
-	runtime_tmpdir=None,
-	console=False,
-	icon='qCSF/assets/icon.ico'
-)
-'''
-	# To tell the difference in frozen vs unfrozen executions
-	if getattr(sys, 'frozen', False):
-		bundle_dir = sys._MEIPASS
-	else:
-		bundle_dir = os.path.dirname(os.path.abspath(__file__))
-'''
+
+if oneFile:
+	exe = EXE(
+		pyz,
+		a.scripts,
+		a.binaries,
+		a.zipfiles,
+		a.datas,
+		name=appName,
+		debug=True,
+		strip=False,
+		upx=True,
+		runtime_tmpdir=None,
+		console=True,
+		icon=f'assets/{appName}/icon.ico'
+	)
+else:
+	exe = EXE(
+		pyz,
+		a.scripts,
+		exclude_binaries=True,
+		name=appName,
+		debug=False,
+		strip=False,
+		upx=True,
+		console=False,
+		icon=f'assets/{appName}/icon.ico',
+	)
+
+	coll = COLLECT(
+		exe,
+		a.binaries,
+		a.zipfiles,
+		a.datas,
+		strip=False,
+		upx=True,
+		name=appName
+	)
