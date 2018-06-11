@@ -231,13 +231,11 @@ class PeripheralCSFTester():
 			self.showInstructions(blockCounter==0)
 			# Run each trial in this block
 			for trialCounter,trial in enumerate(block['trials']):
-				self.fixationStim.autoDraw = True
+				self.fixationStim.draw()
 				self.win.flip()
 				
 				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
-
-			self.fixationStim.autoDraw = False
 
 			# Write output
 			for orientation in self.config['orientations']:
@@ -286,11 +284,14 @@ class PeripheralCSFTester():
 
 			self.stim.draw()
 			self.win.flip()          # show the stimulus
+			self.fixationStim.draw()
+
 			time.sleep(self.config['stimulus_duration'] / 1000.0)
 			self.win.flip()          # hide the stimulus
 			if i < 1:
 				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
+		self.fixationStim.draw()
 		self.win.flip()
 
 		correct = self.checkResponse(whichStim)
@@ -314,7 +315,6 @@ class PeripheralCSFTester():
 		except Exception as exc:
 			logging.warning(exc)
 
-		self.fixationStim.autoDraw = False
 		self.showFinishedMessage()
 
 		self.win.close()
