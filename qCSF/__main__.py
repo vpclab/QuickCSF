@@ -41,7 +41,7 @@ def getSound(filename, freq, duration):
 		return sound.Sound(freq, secs=duration)
 
 def getConfig():
-	config = settings.getSettings()
+	config = settings.getSettings('qCSF Settings.ini')
 	# Each of these are lists of numbers
 	for k in ['eccentricities', 'orientations', 'stimulus_position_angles', 'contrast_overrides']:
 		if isinstance(config[k], str):
@@ -55,7 +55,6 @@ def getConfig():
 	config['start_time'] = data.getDateStr()
 
 	return config
-
 
 class PeripheralCSFTester():
 	def __init__(self, config):
