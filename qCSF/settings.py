@@ -30,9 +30,9 @@ settingGroups = {
 	],
 	'Input settings': [
 		['First stimulus key', 'num_4'],
-		['Second stimulus key', 'num_6']
+		['Second stimulus key', 'num_6'],
 		['First stimulus key label', '1'],
-		['Second stimulus key label', '2']
+		['Second stimulus key label', '2'],
 	]
 }
 
