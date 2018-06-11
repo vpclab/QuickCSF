@@ -119,8 +119,8 @@ class PeripheralCSFTester():
 		return qcsf.QCSF(stimulusSpace, parameterSpace)
 
 	def showInstructions(self, firstTime=False):
-		key1 = self.config['first_stimulus_key']
-		key2 = self.config['second_stimulus_key']
+		key1 = self.config['first_stimulus_key_label']
+		key2 = self.config['second_stimulus_key_label']
 
 		instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
 		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
