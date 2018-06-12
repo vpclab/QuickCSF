@@ -284,7 +284,6 @@ class PeripheralCSFTester():
 
 			self.stim.draw()
 			self.win.flip()          # show the stimulus
-			self.fixationStim.draw()
 
 			time.sleep(self.config['stimulus_duration'] / 1000.0)
 			self.win.flip()          # hide the stimulus
