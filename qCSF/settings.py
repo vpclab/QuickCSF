@@ -65,7 +65,7 @@ def parseArguments(defaultSettingsFile):
 
 	return vars(args)
 
-def getSettings(settingsFile='settings.ini', save=True):
+def getSettings(defaultSettingsFile='settings.ini', save=None):
 	settings = {}
 	# Defaults
 	for group, fields in settingGroups.items():
@@ -75,10 +75,13 @@ def getSettings(settingsFile='settings.ini', save=True):
 			settings[fieldName] = value
 
 	# Load command line arguments early, in case the settings file is specified
-	commandLineArgs = parseArguments(settingsFile)
+	commandLineArgs = parseArguments(defaultSettingsFile)
 
 	# Saved parameters
 	settingsFile = commandLineArgs.get('config')
+	if save is None:
+		# Only save if this is NOT a custom INI
+		save = (settingsFile == defaultSettingsFile)
 	try: 
 		savedInfo = configparser.ConfigParser()
 		savedInfo.read(settingsFile)
