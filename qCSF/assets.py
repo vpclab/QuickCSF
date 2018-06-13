@@ -5,7 +5,8 @@ def getFilePath(filename):
 		# onefile frozen mode
 		rootDir = sys._MEIPASS
 	else:
-		if sys.executable.endswith('python') or sys.executable.endswith('python.exe'):
+		exe = os.path.basename(sys.executable)
+		if exe[:6] == 'python':
 			# Dev mode
 			rootDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 		else:
