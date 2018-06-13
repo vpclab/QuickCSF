@@ -61,8 +61,6 @@ def getConfig():
 
 class PeripheralCSFTester():
 	def __init__(self, config):
-		os.makedirs('data', exist_ok=True)
-
 		self.config = config
 
 		sound.init()
@@ -319,6 +317,7 @@ class PeripheralCSFTester():
 		self.win.close()
 		core.quit()
 
+os.makedirs('data', exist_ok=True)
 config = getConfig()
 tester = PeripheralCSFTester(config)
 tester.start()
