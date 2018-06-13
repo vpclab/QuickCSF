@@ -11,7 +11,7 @@ settingGroups = {
 	'General settings': [ 
 		['Session ID (ex: Day1_Initials)', ''],
 		['Skip settings dialog', False],
-		['Data filename', 'data/PCSF_{start_time}_{session_id}'],
+		['Data filename', 'data/CSF_{start_time}_{session_id}'],
 	],
 	'Display settings': [
 		['Monitor width (cm)', 40],
