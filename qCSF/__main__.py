@@ -1,4 +1,5 @@
 import sys, os, platform
+import traceback
 import argparse
 import time, random
 import logging
@@ -10,7 +11,7 @@ import psychopy
 
 psychopy.prefs.general['audioLib'] = ['pyo','pygame', 'sounddevice']
 
-from psychopy import core, visual, gui, data, event, monitors, sound
+from psychopy import core, visual, gui, data, event, monitors, sound, tools
 import numpy
 
 import qcsf, settings, assets
@@ -66,6 +67,7 @@ class PeripheralCSFTester():
 		sound.init()
 
 		self.setupMonitor()
+		self.setupHUD()
 		self.setupDataFile()
 		
 		self.setupBlocks()
@@ -76,6 +78,7 @@ class PeripheralCSFTester():
 		self.mon.setWidth(self.config['monitor_width'])  # Measure first to ensure this is correct
 
 		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
+		self.mon.setSizePix(self.win.size)
 
 		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['stimulus_size'], mask='gauss')
 		fixationVertices = (
@@ -84,6 +87,62 @@ class PeripheralCSFTester():
 			(-0.5, 0), (0.5, 0),
 		)
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
+
+	def setTopLeftPos(self, stim, pos):
+		# convert pixels to degrees
+		stimDim = stim.boundingBox
+		screenDim = self.mon.getSizePix()
+		centerPos = [
+			pos[0] + (stimDim[0] - screenDim[0]) / 2,
+			(screenDim[1] - stimDim[1]) / 2 - pos[1],
+		]
+		stim.pos = centerPos
+
+	def updateHUD(self, item, text, color=None):
+		element, pos, labelText = self.hudElements[item]
+		element.text = text
+		self.setTopLeftPos(element, pos)
+		if color != None:
+			element.color = color
+
+	def setupHUD(self):
+		lineHeight = 40
+		xOffset = 225
+		yOffset = 10
+
+		self.hudElements = OrderedDict(
+			lastStim = [visual.TextStim(self.win, text=' '), [xOffset, 0 + yOffset], 'Last stim'],
+			lastResp = [visual.TextStim(self.win, text=' '), [xOffset + 40, lineHeight + yOffset], None],
+			lastOk = [visual.TextStim(self.win, text=' '), [xOffset -10, lineHeight + yOffset], 'Last resp'],
+			thisStim = [visual.TextStim(self.win, text=' '), [xOffset, 2*lineHeight + yOffset], 'This stim'],
+			expectedResp = [visual.TextStim(self.win, text=' '), [xOffset, 3*lineHeight + yOffset], 'Exp resp'],
+		)
+
+		for key in list(self.hudElements):
+			stim, pos, labelText = self.hudElements[key]
+			if labelText is not None:
+				label = visual.TextStim(self.win, text=labelText+':')
+				pos = [30, pos[1]]
+				self.hudElements[key+'_label'] = [label, pos, None]
+
+		for key in list(self.hudElements):
+			stim, pos, labelText = self.hudElements[key]
+
+			stim.color = 1
+			stim.units = 'pix'
+			stim.height = lineHeight * .88
+			stim.wrapWidth = 9999
+			self.setTopLeftPos(stim, pos)
+
+	def enableHUD(self):
+		for key, hudArgs in self.hudElements.items():
+			stim, pos, labelText = hudArgs
+			stim.autoDraw = True
+
+	def disableHUD(self):
+		for key, hudArgs in self.hudElements.items():
+			stim, pos, labelText = hudArgs
+			stim.autoDraw = False
 
 	def setupDataFile(self):
 		self.dataFilename = self.config['data_filename'].format(**self.config) + '.csv'
@@ -152,10 +211,12 @@ class PeripheralCSFTester():
 			if 'escape' in keys:
 				raise UserExit()
 
-	def showFinishedMessage(self):
-		instructions = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
-		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=20)
-		instructionsStim.draw()
+	def showFinishedMessage(self, text=None):
+		if text is None:
+			text = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
+
+		textStim = visual.TextStim(self.win, text=text, color=-1, wrapWidth=20)
+		textStim.draw()
 
 		self.win.flip()
 
@@ -167,14 +228,19 @@ class PeripheralCSFTester():
 		key1 = self.config['first_stimulus_key']
 		key2 = self.config['second_stimulus_key']
 
+		label1 = self.config['first_stimulus_key_label']
+		label2 = self.config['second_stimulus_key_label']
+
 		correct = None
 		while correct is None:
 			keys = event.waitKeys()
 			logging.debug(f'Keys detected: {keys}')
 			if key1 in keys:
 				logging.info(f'User selected key1 ({key1})')
+				self.updateHUD('lastResp', label1)
 				correct = (whichStim == 0)
 			if key2 in keys:
+				self.updateHUD('lastResp', label2)
 				logging.info(f'User selected key1 ({key2})')
 				correct = (whichStim == 1)
 			if 'q' in keys or 'escape' in keys:
@@ -228,6 +294,7 @@ class PeripheralCSFTester():
 			# Show instructions
 			self.showInstructions(blockCounter==0)
 			# Run each trial in this block
+			self.enableHUD()
 			for trialCounter,trial in enumerate(block['trials']):
 				self.fixationStim.draw()
 				self.win.flip()
@@ -235,6 +302,7 @@ class PeripheralCSFTester():
 				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
 
+			self.disableHUD()
 			# Write output
 			for orientation in self.config['orientations']:
 				result = stepHandlers[orientation].getBestParameters().T
@@ -263,6 +331,7 @@ class PeripheralCSFTester():
 
 		frequency = stimParams[1]
 		logging.info(f'Presenting ecc={trial.eccentricity}, orientation={trial.orientation}, contrast={contrast}, frequency={frequency}, positionAngle={trial.stimPositionAngle}')
+		whichStim = int(random.random() * 2)
 
 		self.stim.sf = frequency
 		self.stim.ori = trial.orientation
@@ -271,7 +340,10 @@ class PeripheralCSFTester():
 			numpy.sin(trial.stimPositionAngle * numpy.pi/180.0) * trial.eccentricity,
 		)
 
-		whichStim = int(random.random() * 2)
+		stimString = 'F:%.2f, O:%.2f, C:%.2f, E:%.2f, P:%.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
+		self.updateHUD('thisStim', stimString)
+		self.updateHUD('expectedResp', whichStim+1)
+
 		logging.info(f'Correct stimulus = {whichStim+1}')
 		for i in range(2):
 			self.config['sitmulusTone'].play() # play the tone
@@ -292,11 +364,16 @@ class PeripheralCSFTester():
 		self.win.flip()
 
 		correct = self.checkResponse(whichStim)
+		self.updateHUD('lastStim', stimString)
+		self.updateHUD('thisStim', '')
+
 		if correct:
 			logging.debug('Correct response')
+			self.updateHUD('lastOk', '✔', (-1, 1, -1))
 			self.config['positiveFeedback'].play()
 		else:
 			logging.debug('Incorrect response')
+			self.updateHUD('lastOk', '✘', (1, -1, -1))
 			self.config['negativeFeedback'].play()
 
 		self.win.flip()
@@ -310,7 +387,10 @@ class PeripheralCSFTester():
 		except UserExit as exc:
 			logging.info(exc)
 		except Exception as exc:
-			logging.warning(exc)
+			print(exc)
+			traceback.print_exc()
+			logging.critical(exc)
+			self.showFinishedMessage('Something went wrong!\n\nPlease let the research assistant know.')
 
 		self.showFinishedMessage()
 
