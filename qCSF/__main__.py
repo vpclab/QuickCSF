@@ -342,7 +342,12 @@ class PeripheralCSFTester():
 
 		stimString = 'F:%.2f, O:%.2f, C:%.2f, E:%.2f, P:%.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
 		self.updateHUD('thisStim', stimString)
-		self.updateHUD('expectedResp', whichStim+1)
+		expectedLabels = [
+			self.config['first_stimulus_key_label'],
+			self.config['second_stimulus_key_label'],
+		]
+
+		self.updateHUD('expectedResp', expectedLabels[whichStim])
 
 		logging.info(f'Correct stimulus = {whichStim+1}')
 		for i in range(2):
