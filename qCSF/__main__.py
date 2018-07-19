@@ -1,4 +1,5 @@
 import sys, os, platform
+import math
 import traceback
 import argparse
 import time, random
@@ -15,6 +16,12 @@ from psychopy import core, visual, gui, data, event, monitors, sound, tools
 import numpy
 
 import qcsf, settings, assets
+
+import PyPupilGazeTracker
+import PyPupilGazeTracker.smoothing
+import PyPupilGazeTracker.PsychoPyVisuals
+import PyPupilGazeTracker.monitorTools
+import PyPupilGazeTracker.GazeTracker
 
 class Trial():
 	def __init__(self, eccentricity, orientation, stimPositionAngle):
@@ -73,12 +80,17 @@ class PeripheralCSFTester():
 		self.setupBlocks()
 
 	def setupMonitor(self):
-		self.mon = monitors.Monitor('testMonitor')
-		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct
-		self.mon.setWidth(self.config['monitor_width'])  # Measure first to ensure this is correct
+		size = PyPupilGazeTracker.monitorTools.getMonitorPhysicalSize()
+		resolution = PyPupilGazeTracker.monitorTools.getMonitorGeometry()
+		resolution = [resolution.width(), resolution.height()]
 
-		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
-		self.mon.setSizePix(self.win.size)
+		self.mon = monitors.Monitor('testMonitor')
+		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct 
+		self.mon.setWidth(size.width()/10)  # Measure first to ensure this is correct
+		self.mon.setSizePix(resolution)
+		self.mon.save()
+
+		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution)
 
 		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['stimulus_size'], mask='gauss')
 		fixationVertices = (
@@ -87,6 +99,13 @@ class PeripheralCSFTester():
 			(-0.5, 0), (0.5, 0),
 		)
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
+
+		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
+			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
+			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(resolution)
+			self.gazeTracker.start()
+		else:
+			self.gazeTracker = None
 
 	def setTopLeftPos(self, stim, pos):
 		# convert pixels to degrees
@@ -175,6 +194,16 @@ class PeripheralCSFTester():
 
 		return qcsf.QCSF(stimulusSpace, parameterSpace)
 
+	def showMessage(self, msg):
+		instructionsStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
+		instructionsStim.draw()
+
+		self.win.flip()
+
+		keys = event.waitKeys()
+		if 'escape' in keys:
+			raise UserExit()
+
 	def showInstructions(self, firstTime=False):
 		key1 = self.config['first_stimulus_key_label']
 		key2 = self.config['second_stimulus_key_label']
@@ -189,40 +218,10 @@ class PeripheralCSFTester():
 		if not firstTime:
 			instructions = 'These instructions are the same as before.\n\n' + instructions
 
-		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=40)
-		instructionsStim.draw()
-
-		self.win.flip()
-
-		keys = event.waitKeys()
-		if 'escape' in keys:
-			raise UserExit()
+		self.showMessage(instructions)
 
 	def takeABreak(self, waitForKey=True):
-		instructions = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].'
-		instructionsStim = visual.TextStim(self.win, text=instructions, color=-1, wrapWidth=20)
-		instructionsStim.draw()
-
-		self.win.flip()
-
-		keys = []
-		while waitForKey and (not 'space' in keys):
-			keys = event.waitKeys()
-			if 'escape' in keys:
-				raise UserExit()
-
-	def showFinishedMessage(self, text=None):
-		if text is None:
-			text = 'Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.'
-
-		textStim = visual.TextStim(self.win, text=text, color=-1, wrapWidth=20)
-		textStim.draw()
-
-		self.win.flip()
-
-		keys = []
-		while not ('space' in keys or 'escape' in keys):
-			keys = event.waitKeys()
+		self.showMessage('Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].')
 
 	def checkResponse(self, whichStim):
 		key1 = self.config['first_stimulus_key']
@@ -332,6 +331,7 @@ class PeripheralCSFTester():
 		frequency = stimParams[1]
 		logging.info(f'Presenting ecc={trial.eccentricity}, orientation={trial.orientation}, contrast={contrast}, frequency={frequency}, positionAngle={trial.stimPositionAngle}')
 		whichStim = int(random.random() * 2)
+		whichStim = 1
 
 		self.stim.sf = frequency
 		self.stim.ori = trial.orientation
@@ -350,10 +350,20 @@ class PeripheralCSFTester():
 		self.updateHUD('expectedResp', expectedLabels[whichStim])
 
 		logging.info(f'Correct stimulus = {whichStim+1}')
+		if self.config['wait_for_fixation']:
+			self.waitForFixation()
+
 		for i in range(2):
 			self.config['sitmulusTone'].play() # play the tone
 			if whichStim == i:
 				self.stim.contrast = contrast
+				if self.config['render_at_gaze']:
+					gazePos = self.getGazePosition()
+					print('Gaze pos:', gazePos)
+					self.stim.pos = [
+						self.stim.pos[0] + gazePos[0],
+						self.stim.pos[1] + gazePos[1]
+					]
 			else:
 				self.stim.contrast = 0
 
@@ -386,6 +396,24 @@ class PeripheralCSFTester():
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
 
+	def waitForFixation(self, target=[0,0], threshold=3.5):
+		logging.info(f'Waiting for fixation...')
+		distance = threshold * 2
+		while distance > threshold:
+			pos = self.getGazePosition()
+			distance = math.sqrt((target[0]-pos[0])**2 + (target[1]-pos[1])**2)
+
+	def getGazePosition(self):
+		pos = None
+		while pos is None: 
+			time.sleep(0.1)
+			pos = self.gazeTracker.getPosition()
+
+		pos = self.screenMarkers._screenToPsychoPy(pos)
+		pos = [psychopy.tools.monitorunittools.pix2deg(dim, self.mon) for dim in pos]
+
+		return pos
+
 	def start(self):
 		try:
 			self.runBlocks()
@@ -395,9 +423,13 @@ class PeripheralCSFTester():
 			print(exc)
 			traceback.print_exc()
 			logging.critical(exc)
-			self.showFinishedMessage('Something went wrong!\n\nPlease let the research assistant know.')
+			self.showMessage('Something went wrong!\n\nPlease let the research assistant know.')
 
-		self.showFinishedMessage()
+		if self.gazeTracker is not None:
+			self.gazeTracker.stop()
+
+		self.fixationStim.autoDraw = False
+		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.')
 
 		self.win.close()
 		core.quit()
