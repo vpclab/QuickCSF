@@ -16,6 +16,8 @@ import numpy
 
 import qcsf, settings, assets
 
+import monitorTools
+
 class Trial():
 	def __init__(self, eccentricity, orientation, stimPositionAngle):
 		self.eccentricity = eccentricity
@@ -73,12 +75,16 @@ class PeripheralCSFTester():
 		self.setupBlocks()
 
 	def setupMonitor(self):
+		physicalSize = monitorTools.getPhysicalSize()
+		resolution = monitorTools.getResolution()
+
 		self.mon = monitors.Monitor('testMonitor')
 		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct
-		self.mon.setWidth(self.config['monitor_width'])  # Measure first to ensure this is correct
+		self.mon.setWidth(physicalSize[0]/10)
+		self.mon.setSizePix(resolution)
+		self.mon.save()
 
 		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg')
-		self.mon.setSizePix(self.win.size)
 
 		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['stimulus_size'], mask='gauss')
 		fixationVertices = (
