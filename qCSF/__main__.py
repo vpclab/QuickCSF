@@ -102,7 +102,10 @@ class PeripheralCSFTester():
 
 		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
-			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(resolution)
+			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(
+				smoother=PyPupilGazeTracker.smoothing.SimpleDecay(),
+				screenSize=resolution
+			)
 			self.gazeTracker.start()
 		else:
 			self.gazeTracker = None
@@ -331,7 +334,6 @@ class PeripheralCSFTester():
 		frequency = stimParams[1]
 		logging.info(f'Presenting ecc={trial.eccentricity}, orientation={trial.orientation}, contrast={contrast}, frequency={frequency}, positionAngle={trial.stimPositionAngle}')
 		whichStim = int(random.random() * 2)
-		whichStim = 1
 
 		self.stim.sf = frequency
 		self.stim.ori = trial.orientation
@@ -409,10 +411,7 @@ class PeripheralCSFTester():
 			time.sleep(0.1)
 			pos = self.gazeTracker.getPosition()
 
-		pos = self.screenMarkers._screenToPsychoPy(pos)
-		pos = [psychopy.tools.monitorunittools.pix2deg(dim, self.mon) for dim in pos]
-
-		return pos
+		return PyPupilGazeTracker.PsychoPyVisuals.screenToMonitorCenterDeg(self.mon, pos)
 
 	def start(self):
 		try:
