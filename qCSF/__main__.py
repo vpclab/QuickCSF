@@ -17,10 +17,11 @@ import numpy
 
 import qcsf, settings, assets
 
+import monitorTools
+
 import PyPupilGazeTracker
 import PyPupilGazeTracker.smoothing
 import PyPupilGazeTracker.PsychoPyVisuals
-import PyPupilGazeTracker.monitorTools
 import PyPupilGazeTracker.GazeTracker
 
 class Trial():
@@ -80,13 +81,12 @@ class PeripheralCSFTester():
 		self.setupBlocks()
 
 	def setupMonitor(self):
-		size = PyPupilGazeTracker.monitorTools.getMonitorPhysicalSize()
-		resolution = PyPupilGazeTracker.monitorTools.getMonitorGeometry()
-		resolution = [resolution.width(), resolution.height()]
+		physicalSize = monitorTools.getPhysicalSize()
+		resolution = monitorTools.getResolution()
 
 		self.mon = monitors.Monitor('testMonitor')
-		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct 
-		self.mon.setWidth(size.width()/10)  # Measure first to ensure this is correct
+		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct
+		self.mon.setWidth(physicalSize[0]/10)
 		self.mon.setSizePix(resolution)
 		self.mon.save()
 
