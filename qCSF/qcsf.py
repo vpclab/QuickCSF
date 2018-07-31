@@ -1,5 +1,3 @@
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy
 import logging
 import time
@@ -296,6 +294,8 @@ class QCSF():
 
 
 if __name__ == '__main__':
+	import matplotlib
+	import matplotlib.pyplot as plt
 	import pathlib
 
 	numpy.random.seed()
