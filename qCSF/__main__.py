@@ -96,11 +96,6 @@ class PeripheralCSFTester():
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
 
 		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
-			import PyPupilGazeTracker
-			import PyPupilGazeTracker.smoothing
-			import PyPupilGazeTracker.PsychoPyVisuals
-			import PyPupilGazeTracker.GazeTracker
-			
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
 			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(
 				smoother=PyPupilGazeTracker.smoothing.SimpleDecay(),
@@ -443,5 +438,12 @@ class PeripheralCSFTester():
 
 os.makedirs('data', exist_ok=True)
 config = getConfig()
+
+if config['wait_for_fixation'] or config['render_at_gaze']:
+	import PyPupilGazeTracker
+	import PyPupilGazeTracker.smoothing
+	import PyPupilGazeTracker.PsychoPyVisuals
+	import PyPupilGazeTracker.GazeTracker
+
 tester = PeripheralCSFTester(config)
 tester.start()
