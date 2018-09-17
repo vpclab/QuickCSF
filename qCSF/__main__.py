@@ -195,6 +195,14 @@ class PeripheralCSFTester():
 			numpy.arange(0, 21)		# Low frequency truncation (log delta)
 		])
 
+		logging.info('Stimulus space (contrast): numpy.arange(0, 31))')
+		logging.info('Stimulus space (frequency): numpy.arange(0, 20))')
+		
+		logging.info('Parameter space (peak sensitivity): numpy.arange(0, 28))')
+		logging.info('Parameter space (peak frequency): numpy.arange(0, 21))')
+		logging.info('Parameter space (log bandwidth): numpy.arange(0, 21))')
+		logging.info('Parameter space (log delta): numpy.arange(0, 21))')
+
 		return qcsf.QCSF(stimulusSpace, parameterSpace)
 
 	def showMessage(self, msg):
