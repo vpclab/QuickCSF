@@ -60,7 +60,7 @@ def getConfig():
 	config['sitmulusTone'] = getSound('600Hz_square_25.wav', 600, .185)
 	config['positiveFeedback'] = getSound('1000Hz_sine_50.wav', 1000, .077)
 	config['negativeFeedback'] = getSound('300Hz_sine_25.wav', 300, .2)
-	
+
 	return config
 
 class PeripheralCSFTester():
@@ -72,7 +72,7 @@ class PeripheralCSFTester():
 		self.setupMonitor()
 		self.setupHUD()
 		self.setupDataFile()
-		
+
 		self.setupBlocks()
 
 	def setupMonitor(self):
@@ -192,7 +192,7 @@ class PeripheralCSFTester():
 
 		logging.info('Stimulus space (contrast): numpy.arange(0, 31))')
 		logging.info('Stimulus space (frequency): numpy.arange(0, 20))')
-		
+
 		logging.info('Parameter space (peak sensitivity): numpy.arange(0, 28))')
 		logging.info('Parameter space (peak frequency): numpy.arange(0, 21))')
 		logging.info('Parameter space (log bandwidth): numpy.arange(0, 21))')
@@ -220,7 +220,7 @@ class PeripheralCSFTester():
 		instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
 		instructions += 'During the process, keep your gaze fixated on the small cross at the center of the screen.\n\n'
 		instructions += 'If you are uncertain, make a guess.\n\n\nPress any key to start.'
-		
+
 		if not firstTime:
 			instructions = 'These instructions are the same as before.\n\n' + instructions
 
@@ -278,12 +278,12 @@ class PeripheralCSFTester():
 						random.shuffle(possibleAngles)
 
 					block['trials'].append(Trial(eccentricity, orientation, possibleAngles.pop()))
-				
+
 			random.shuffle(block['trials'])
 			self.blocks.append(block)
 
 		random.shuffle(self.blocks)
-		
+
 		for block in self.blocks:
 			logging.debug('Block eccentricity: {eccentricity}'.format(**block))
 			for trial in block['trials']:
@@ -303,7 +303,7 @@ class PeripheralCSFTester():
 			for trialCounter,trial in enumerate(block['trials']):
 				self.fixationStim.draw()
 				self.win.flip()
-				
+
 				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
 
@@ -410,7 +410,7 @@ class PeripheralCSFTester():
 
 	def getGazePosition(self):
 		pos = None
-		while pos is None: 
+		while pos is None:
 			time.sleep(0.1)
 			pos = self.gazeTracker.getPosition()
 
