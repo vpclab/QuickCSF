@@ -19,11 +19,6 @@ import qcsf, settings, assets
 
 import monitorTools
 
-import PyPupilGazeTracker
-import PyPupilGazeTracker.smoothing
-import PyPupilGazeTracker.PsychoPyVisuals
-import PyPupilGazeTracker.GazeTracker
-
 class Trial():
 	def __init__(self, eccentricity, orientation, stimPositionAngle):
 		self.eccentricity = eccentricity
@@ -101,6 +96,11 @@ class PeripheralCSFTester():
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
 
 		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
+			import PyPupilGazeTracker
+			import PyPupilGazeTracker.smoothing
+			import PyPupilGazeTracker.PsychoPyVisuals
+			import PyPupilGazeTracker.GazeTracker
+			
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
 			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(
 				smoother=PyPupilGazeTracker.smoothing.SimpleDecay(),
