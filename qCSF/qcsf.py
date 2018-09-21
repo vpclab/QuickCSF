@@ -1,6 +1,7 @@
 import numpy
 import logging
 import time
+import math
 
 def mapStimParams(params, exponify=False):
 	sensitivity = 0.1*params[:,0]
@@ -181,12 +182,27 @@ class QCSF():
 
 		return sensitivity
 
-	def markResponse(self, response):
-		self.responseHistory.append([self.currentStimulusIndex, response])
+	def getStimIndex(self, stimValues):
+		for i in range(self.stimComboCount):
+			stimIndicies = self.inflateStimulusIndex(numpy.array([[i]]))
+			searchStimValues = mapStimParams(stimIndicies, True)
+			for j,v in enumerate(searchStimValues):
+				if not math.isclose(v, stimValues[j], abs_tol=.0001):
+					break	# break the j loop, causing the next i to start
+			else:
+				# the j loop did not break, so all values from i were close enough
+				return i
+		else:
+			print('Could not find stim index for', stimValues)
+
+	def markResponse(self, response, stimIndex=None):
+		if stimIndex is None:
+			stimIndex = self.currentStimulusIndex
+		self.responseHistory.append([stimIndex, response])
 
 		pm = self._pmeas(
 			numpy.arange(self.paramComboCount)[:,numpy.newaxis],
-			self.currentStimulusIndex
+			stimIndex
 		)
 
 		if response:
@@ -227,23 +243,27 @@ class QCSF():
 			return mapCSFParams(estimatedParamMeans, True).T
 
 	# Plot the current state
-	def visual(self, qcsf, unmappedTrueParams, showNumbers=False):
-		estimatedParamMeans = qcsf.getBestParameters(leaveAsIndices=True)
-		frequencyDomain = numpy.arange(qcsf.stimulusRanges[1]).reshape(-1,1)
+	def visual(self, graph, unmappedTrueParams=None, showNumbers=False):
+		estimatedParamMeans = self.getBestParameters(leaveAsIndices=True)
+		frequencyDomain = numpy.arange(self.stimulusRanges[1]).reshape(-1,1)
 
-		truthData = qcsf.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
-		estimatedData = qcsf.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+		if unmappedTrueParams is not None:
+			truthData = self.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
+		else:
+			truthData = None
+		estimatedData = self.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 		
 		# Convert from log-base to linear
 		frequencyDomain = numpy.power(10, frequencyDomain/10 - 0.7)
-		truthData = numpy.power(10, truthData)
 		estimatedData = numpy.power(10, estimatedData)
+		if truthData is not None:
+			truthData = numpy.power(10, truthData)
 
 		positives = {'c':[], 'f':[]}
 		negatives = {'c':[], 'f':[]}
 
 		# Chart responses
-		for record in qcsf.responseHistory:
+		for record in self.responseHistory:
 			stimIndices = self.inflateStimulusIndex(record[0])
 			stimValues = mapStimParams(stimIndices, True).T
 			
@@ -255,7 +275,8 @@ class QCSF():
 				negatives['f'].append(stimValues.item(1))
 
 		# plot all of the data
-		truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
+		if truthData is not None:
+			truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
 		estimatedLine, = graph.plot(frequencyDomain, estimatedData, linewidth=2.5)
 		graph.plot(positives['f'], positives['c'], 'g^')
 		graph.plot(negatives['f'], negatives['c'], 'rv')
@@ -275,13 +296,14 @@ class QCSF():
 		graph.grid()
 
 		if showNumbers:
-			trueParams = mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
-			trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
-			truthLine.set_label(f'Truth: {trueParams}')
-
-			paramEstimates = qcsf.getBestParameters().tolist()[0]
+			paramEstimates = self.getBestParameters().tolist()[0]
 			paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(paramEstimates)
 			estimatedLine.set_label(f'Estim: {paramEstimates}')
+
+			if truthData is not None:
+				trueParams = mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
+				trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
+				truthLine.set_label(f'Truth: {trueParams}')
 
 			graph.legend()
 
@@ -302,7 +324,7 @@ if __name__ == '__main__':
 
 	saveImages = False
 	indexLookupFixed = False
-	perfectResponsesOnly = False
+	perfectResponsesOnly = True
 
 
 	pathlib.Path('logs').mkdir(parents=True, exist_ok=True) 
@@ -344,10 +366,10 @@ if __name__ == '__main__':
 	plt.ion()
 	plt.show()
 
-	qcsf.visual(qcsf, unmappedTrueParams)
+	qcsf.visual(graph, unmappedTrueParams)
 
 	# Trial loop
-	for i in range(50):
+	for i in range(24):
 		# Get the next stimulus
 		newStimValues = qcsf.next()
 
@@ -362,13 +384,14 @@ if __name__ == '__main__':
 		else:
 			response = qcsf.sim(unmappedTrueParams, qcsf.currentStimulusIndex).item(0)
 
+		print('Current stim index', qcsf.currentStimulusIndex)
 		qcsf.markResponse(response)
 		
 		# Update the plot
 		graph.clear()
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
-		#qcsf.visual(qcsf, unmappedTrueParams, (i+1)%5==0)
-		qcsf.visual(qcsf, unmappedTrueParams, True)
+		#qcsf.visual(graph, unmappedTrueParams, (i+1)%5==0)
+		qcsf.visual(graph, unmappedTrueParams, True)
 
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))

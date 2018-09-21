@@ -11,13 +11,19 @@ settingGroups = {
 	'General settings': [ 
 		['Session ID (ex: Day1_Initials)', ''],
 		['Skip settings dialog', False],
-		['Data filename', 'data/CSF_{start_time}_{session_id}'],
+		['Data filename', 'data/PCSF_{start_time}_{session_id}'],
 	],
+
+	'Gaze tracking': [
+		['Wait for fixation', False],
+		['Render at gaze', False],
+	],
+
 	'Display settings': [
-		['Monitor width (cm)', 40],
 		['Monitor distance (cm)', 57],
 		['Fixation size (arcmin)', 20],
 	],
+
 	'Stimuli settings': [
 		['Eccentricities (degrees)', '4 8 12'],
 		['Orientations (degrees)', '45 67.5 90 112.5 135'],
@@ -28,6 +34,7 @@ settingGroups = {
 		['Contrast overrides', ''],
 		['Stimulus size (degrees of visual angle)', 4],
 	],
+
 	'Input settings': [
 		['First stimulus key', 'num_4'],
 		['Second stimulus key', 'num_6'],
