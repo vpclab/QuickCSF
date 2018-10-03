@@ -95,6 +95,17 @@ class PeripheralCSFTester():
 			(-0.5, 0), (0.5, 0),
 		)
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
+		self.stayFixationStim = [
+			visual.Circle(self.win,
+				radius = self.config['gaze_offset_max'] * .5,
+				lineColor = 'black',
+				fillColor = None,
+			), visual.Circle(self.win,
+				radius = self.config['gaze_offset_max'] * .1,
+				lineColor = None,
+				fillColor = 'black',
+			)
+		]
 
 		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
@@ -364,7 +375,10 @@ class PeripheralCSFTester():
 			if self.config['wait_for_ready_key']:
 				self.waitForReadyKey()
 
-			self.fixationStim.draw()
+			if self.config['show_circular_fixation']:
+				[_.draw() for _ in self.stayFixationStim]
+			else:
+				self.fixationStim.draw()
 			self.win.flip()
 			time.sleep(.5)
 			if self.config['wait_for_fixation']:
@@ -372,7 +386,7 @@ class PeripheralCSFTester():
 					needToRetry = True
 					self.config['gazeTone'].play()
 					continue
-				
+
 			needToRetry = False
 
 			for i in range(2):
@@ -402,14 +416,21 @@ class PeripheralCSFTester():
 
 				self.config['sitmulusTone'].play() # play the tone
 				self.stim.draw()
+				if self.config['show_circular_fixation']:
+					[_.draw() for _ in self.stayFixationStim]
 				self.win.flip()          # show the stimulus
 
 				time.sleep(self.config['stimulus_duration'] / 1000.0)
+				if self.config['show_circular_fixation']:
+					[_.draw() for _ in self.stayFixationStim]
 				self.win.flip()          # hide the stimulus
 				if i < 1:
 					time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
-			self.fixationStim.draw()
+			if self.config['show_circular_fixation']:
+				[_.draw() for _ in self.stayFixationStim]
+			else:
+				self.fixationStim.draw()
 			self.win.flip()
 
 			if not needToRetry:
@@ -445,7 +466,7 @@ class PeripheralCSFTester():
 
 		self.fixationStim.autoDraw = True
 		fixated = None
-		
+
 		while fixated is None:
 			currentTime = time.time()
 			pos = self.getGazePosition()
