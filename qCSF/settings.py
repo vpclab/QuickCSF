@@ -22,6 +22,7 @@ settingGroups = {
 		['Render at gaze', False],
 		['Retries', 3],
 		['Show gaze', False],
+		['Show circular fixation', False],
 	],
 
 	'Display settings': [
