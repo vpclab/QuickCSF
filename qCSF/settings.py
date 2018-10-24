@@ -1,189 +1,50 @@
+import typing
+from ConfigHelper import ConfigHelper, ConfigGroup, Setting # https://git.vpclab.com/VPCLab/ConfigHelper
+from PySide2.QtWidgets import QApplication
 
-import os, re
-import argparse
+PROGRAM_NAME = 'PyOrientationDiscrimination'
 
-import psychopy
-import psychopy.gui, psychopy.core
+SETTINGS_GROUP = [
+	ConfigGroup('General settings',
+		Setting('Session ID',           str, '', helpText='ex. Day1_ParticipantID'),
+		Setting('Data filename',        str, 'data/PCSF_{start_time}_{session_id}'),
 
-import configparser
+	), ConfigGroup('Gaze tracking',
+		Setting('Wait for fixation',           bool,      False),
+		Setting('Max wait time (s)',           int,       10,   helpText='In seconds'),
+		Setting('Gaze offset max (degrees)',   float,     1.5,  helpText='In degrees'),
+		Setting('Fixation period (seconds)',   float,     0.3,  helpText='In seconds'),
+		Setting('Render at gaze',              bool,      False),
+		Setting('Retries',                     int,       3),
+		Setting('Show gaze',                   bool,      False),
+		Setting('Show circular fixation',      bool,      False),
 
-settingGroups = {
-	'General settings': [ 
-		['Session ID (ex: Day1_Initials)', ''],
-		['Skip settings dialog', False],
-		['Data filename', 'data/PCSF_{start_time}_{session_id}'],
-	],
+	), ConfigGroup('Display settings',
+		Setting('Monitor distance',   int,    57, helpText='In cm'),
+		Setting('Fixation size',      int,    20, helpText='In arcmin'),
 
-	'Gaze tracking': [
-		['Wait for fixation', False],
-		['Max wait time (s)', 10],
-		['Gaze offset max (degrees)', 1.5],
-		['Fixation period (seconds)', .3],
-		['Render at gaze', False],
-		['Retries', 3],
-		['Show gaze', False],
-		['Show circular fixation', False],
-	],
+	), ConfigGroup('Stimuli settings',
+		Setting('Eccentricities',               typing.List[int],        [4, 8, 12], helpText='In degrees'),
+		Setting('Orientations',                 typing.List[float],      [45, 67.5, 90, 112.5, 135], helpText='In degrees'),
+		Setting('Stimulus position angles',     typing.List[int],        [45, 135, 225, 315], helpText='In degrees'),
+		Setting('Trials per stimulus config',   int,                     24),
+		Setting('Stimulus duration',            int,                     200, helpText='In ms'),
+		Setting('Time between stimuli',         int,                     1000, helpText='In ms'),
+		Setting('Contrast overrides',           typing.List[float],      []),
+		Setting('Stimulus size',                int,                     4, helpText='In degrees of visual angle'),
 
-	'Display settings': [
-		['Monitor distance (cm)', 57],
-		['Fixation size (arcmin)', 20],
-	],
+	), ConfigGroup('Input settings',
+		Setting('First stimulus key',           str,     'num_4'),
+		Setting('Second stimulus key',          str,     'num_6'),
+		Setting('First stimulus key label',     str,     '1'),
+		Setting('Second stimulus key label',    str,     '2'),
+		Setting('Wait for ready key',           bool,    True),
 
-	'Stimuli settings': [
-		['Eccentricities (degrees)', '4 8 12'],
-		['Orientations (degrees)', '45 67.5 90 112.5 135'],
-		['Stimulus position angles (degrees)', '45 135 225 315'],
-		['Trials per stimulus config', 24],
-		['Stimulus duration (ms)', 200],
-		['Time between stimuli (ms)', 1000],
-		['Contrast overrides', ''],
-		['Stimulus size (degrees of visual angle)', 4],
-	],
+	),
+]
 
-	'Input settings': [
-		['First stimulus key', 'num_4'],
-		['Second stimulus key', 'num_6'],
-		['First stimulus key label', '1'],
-		['Second stimulus key label', '2'],
-		['Wait for ready key', True],
-	]
-}
-
-def labelToFieldName(label):
-	val = re.sub('\\([^\\)]*\\)', '', label) # strip stuff in parentheses
-	val = val.strip().replace(' ', '_').lower()
-
-	return val.strip()
-
-def formatLabel(label):
-	return f'&nbsp;&nbsp;&nbsp;&nbsp;<span>{label}</span>'
-
-def formattedLabelToFieldName(label):
-	return labelToFieldName(label[label.index('<span>')+6:-7])
-
-def parseArguments(defaultSettingsFile):
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--config', default=defaultSettingsFile)
-
-	for _, fields in settingGroups.items():
-		for field in fields:
-			label, default = field
-			if isinstance(default, bool):
-				default = not default
-			parser.add_argument('--' + labelToFieldName(label), nargs='?', const=default)
-
-	args, unknown = parser.parse_known_args()
-	if len(unknown) > 0:
-		print(f'UNRECOGNIZED ARGUMENTS: {unknown}')
-
-	return vars(args)
-
-def getSettings(defaultSettingsFile='settings.ini', save=None):
-	settings = {}
-	# Defaults
-	for group, fields in settingGroups.items():
-		for field in fields:
-			label, value = field
-			fieldName = labelToFieldName(label)
-			settings[fieldName] = value
-
-	# Load command line arguments early, in case the settings file is specified
-	commandLineArgs = parseArguments(defaultSettingsFile)
-
-	# Saved parameters
-	settingsFile = commandLineArgs.get('config')
-	if save is None:
-		# Only save if this is NOT a custom INI
-		save = (settingsFile == defaultSettingsFile)
-	try: 
-		savedInfo = configparser.ConfigParser()
-		savedInfo.read(settingsFile)
-		for _,section in savedInfo.items():
-			for k,v in section.items():
-				if k != 'session_id':
-					settings[k] = v
-	except:  # if not there then use a default set
-		pass
-
-	# Process the command line arguments last - they should override everything except GUI options
-	for k,v in commandLineArgs.items():
-		if v is not None:
-			try:
-				settings[k] = float(v)
-				if settings[k].is_integer():
-					settings[k] = int(settings[k])
-			except ValueError:
-				settings[k] = v
-
-	fixTypes(settings, settingGroups)
-
-	# GUI
-	if not settings['skip_settings_dialog']:
-		# build the dialog
-		settingsDialog = psychopy.gui.Dlg(title='qCSF Settings')
-
-		for group, fields in settingGroups.items():
-			settingsDialog.addText(f'<h3 style="text-align:left;weight:bold">{group}</h3>')
-
-			for field in fields:
-				label, value = field
-
-				fieldName = labelToFieldName(label)
-				formattedLabel = formatLabel(label)
-
-				if value is not None and value != '':
-					tip = f'Default: {value}'
-				else:
-					tip = ''
-
-				if fieldName in settings:
-					value = settings[fieldName]
-
-				settingsDialog.addField(formattedLabel, value, tip=tip)
-
-		# show the dialog
-		data = settingsDialog.show()
-
-		# retrieve data from the dialog
-		if data is not None:
-			for i,value in enumerate(data):
-				fieldName = formattedLabelToFieldName(settingsDialog.inputFieldNames[i])
-				settings[fieldName] = value
-		else:
-			psychopy.core.quit()
-
-	if save:
-		#filetools.toFile(settingsFile, settings)  # save params to file for next time
-		for group, fields in settingGroups.items():
-			if not savedInfo.has_section(group):
-				savedInfo.add_section(group)
-
-			for field in fields:
-				fieldName = labelToFieldName(field[0])
-				savedInfo.set(group, fieldName, str(settings[fieldName]))
-
-		with open(settingsFile, 'w') as configfile:
-			savedInfo.write(configfile)
-
-	fixTypes(settings, settingGroups)
-	return settings
-
-def fixTypes(settings, settingGroups):
-	for _, fields in settingGroups.items():
-		for field in fields:
-			label, originalValue = field
-			fieldName = labelToFieldName(label)
-			if type(settings[fieldName]) != type(originalValue):
-				if isinstance(originalValue, bool):
-					settings[fieldName] = str(settings[fieldName])[0] in '1tTyY'
-				elif isinstance(originalValue, float):
-					settings[fieldName] = float(settings[fieldName])
-				elif isinstance(originalValue, int):
-					settings[fieldName] = int(settings[fieldName])
-
-
-if __name__ == '__main__':
-	settings = getSettings()
-	for k,v in settings.items():
-		print(f'{k} = {v}')
+def getSettings(filename = f'{PROGRAM_NAME}-settings.ini'):
+	print(filename)
+	if QApplication.instance() is None:
+		_ = QApplication(['tmpApplication'])
+	return ConfigHelper(SETTINGS_GROUP, filename).getSettings()

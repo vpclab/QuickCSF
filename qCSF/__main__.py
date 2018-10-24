@@ -46,16 +46,9 @@ def getSound(filename, freq, duration):
 
 def getConfig():
 	config = settings.getSettings('qCSF Settings.ini')
-	config['start_time'] = data.getDateStr()
-	logFile = config['data_filename'].format(**config) + '.log'
+	config['General settings']['start_time'] = data.getDateStr()
+	logFile = config['General settings']['data_filename'].format(**config['General settings']) + '.log'
 	logging.basicConfig(filename=logFile, level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-
-	# Each of these are lists of numbers
-	for k in ['eccentricities', 'orientations', 'stimulus_position_angles', 'contrast_overrides']:
-		if isinstance(config[k], str):
-			config[k] = [float(v) for v in config[k].split()]
-		else:
-			config[k] = [float(config[k])]
 
 	config['sitmulusTone'] = getSound('600Hz_square_25.wav', 600, .185)
 	config['positiveFeedback'] = getSound('1000Hz_sine_50.wav', 1000, .077)
@@ -81,40 +74,40 @@ class PeripheralCSFTester():
 		resolution = monitorTools.getResolution()
 
 		self.mon = monitors.Monitor('testMonitor')
-		self.mon.setDistance(self.config['monitor_distance'])  # Measure first to ensure this is correct
+		self.mon.setDistance(self.config['Display settings']['monitor_distance'])  # Measure first to ensure this is correct
 		self.mon.setWidth(physicalSize[0]/10)
 		self.mon.setSizePix(resolution)
 		self.mon.save()
 
 		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution)
 
-		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['stimulus_size'], mask='gauss')
+		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['Stimuli settings']['stimulus_size'], mask='gauss')
 		fixationVertices = (
 			(0, -0.5), (0, 0.5),
 			(0, 0),
 			(-0.5, 0), (0.5, 0),
 		)
-		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['fixation_size']/60.0)
+		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['Display settings']['fixation_size']/60.0)
 		self.stayFixationStim = [
 			visual.Circle(self.win,
-				radius = self.config['gaze_offset_max'] * .5,
+				radius = self.config['Gaze tracking']['gaze_offset_max'] * .5,
 				lineColor = 'black',
 				fillColor = None,
 			), visual.Circle(self.win,
-				radius = self.config['gaze_offset_max'] * .1,
+				radius = self.config['Gaze tracking']['gaze_offset_max'] * .1,
 				lineColor = None,
 				fillColor = 'black',
 			)
 		]
 
-		if self.config['wait_for_fixation'] or self.config['render_at_gaze']:
+		if self.config['Gaze tracking']['wait_for_fixation'] or self.config['Gaze tracking']['render_at_gaze']:
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
 			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(
 				smoother=PyPupilGazeTracker.smoothing.SimpleDecay(),
 				screenSize=resolution
 			)
 			self.gazeTracker.start()
-			self.gazeMarker = PyPupilGazeTracker.PsychoPyVisuals.FixationStim(self.win, size=self.config['gaze_offset_max'], units='deg', autoDraw=False)
+			self.gazeMarker = PyPupilGazeTracker.PsychoPyVisuals.FixationStim(self.win, size=self.config['Gaze tracking']['gaze_offset_max'], units='deg', autoDraw=False)
 		else:
 			self.gazeTracker = None
 
@@ -175,7 +168,7 @@ class PeripheralCSFTester():
 			stim.autoDraw = False
 
 	def setupDataFile(self):
-		self.dataFilename = self.config['data_filename'].format(**self.config) + '.csv'
+		self.dataFilename = self.config['General settings']['data_filename'].format(**self.config['General settings']) + '.csv'
 		logging.info(f'Starting data file {self.dataFilename}')
 
 		if not os.path.exists(self.dataFilename):
@@ -224,8 +217,8 @@ class PeripheralCSFTester():
 			raise UserExit()
 
 	def showInstructions(self, firstTime=False):
-		key1 = self.config['first_stimulus_key_label']
-		key2 = self.config['second_stimulus_key_label']
+		key1 = self.config['Input settings']['first_stimulus_key_label']
+		key2 = self.config['Input settings']['second_stimulus_key_label']
 
 		instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
 		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
@@ -243,11 +236,11 @@ class PeripheralCSFTester():
 		self.showMessage('Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].')
 
 	def checkResponse(self, whichStim):
-		key1 = self.config['first_stimulus_key']
-		key2 = self.config['second_stimulus_key']
+		key1 = self.config['Input settings']['first_stimulus_key']
+		key2 = self.config['Input settings']['second_stimulus_key']
 
-		label1 = self.config['first_stimulus_key_label']
-		label2 = self.config['second_stimulus_key_label']
+		label1 = self.config['Input settings']['first_stimulus_key_label']
+		label2 = self.config['Input settings']['second_stimulus_key_label']
 
 		correct = None
 		while correct is None:
@@ -277,20 +270,20 @@ class PeripheralCSFTester():
 			]
 		'''
 		self.blocks = []
-		for eccentricity in self.config['eccentricities']:
+		for eccentricity in self.config['Stimuli settings']['eccentricities']:
 			block = {
 				'eccentricity': eccentricity,
 				'trials': [],
 			}
-			for orientation in self.config['orientations']:
+			for orientation in self.config['Stimuli settings']['orientations']:
 				possibleAngles = []
 
-				for configTrial in range(self.config['trials_per_stimulus_config']):
+				for configTrial in range(self.config['Stimuli settings']['trials_per_stimulus_config']):
 					if len(possibleAngles) == 0:
-						possibleAngles = list(self.config['stimulus_position_angles'])
+						possibleAngles = list(self.config['Stimuli settings']['stimulus_position_angles'])
 						random.shuffle(possibleAngles)
 
-					block['trials'].append(Trial(eccentricity, orientation, possibleAngles.pop()))
+					block['trials'].append(Trial(eccentricity, float(orientation), possibleAngles.pop()))
 
 			random.shuffle(block['trials'])
 			self.blocks.append(block)
@@ -306,7 +299,7 @@ class PeripheralCSFTester():
 		for blockCounter, block in enumerate(self.blocks):
 			# Setup a step handler for each orientation
 			stepHandlers = {}
-			for orientation in self.config['orientations']:
+			for orientation in self.config['Stimuli settings']['orientations']:
 				stepHandlers[orientation] = self.setupStepHandler()
 
 			# Show instructions
@@ -316,12 +309,12 @@ class PeripheralCSFTester():
 			for trialCounter,trial in enumerate(block['trials']):
 				self.win.flip()
 
-				time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between trials
+				time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
 
 			self.disableHUD()
 			# Write output
-			for orientation in self.config['orientations']:
+			for orientation in self.config['Stimuli settings']['orientations']:
 				result = stepHandlers[orientation].getBestParameters().T
 				self.writeOutput(block['eccentricity'], orientation, result)
 
@@ -337,9 +330,9 @@ class PeripheralCSFTester():
 		# These parameters are indices - not real values. They must be mapped
 		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
 
-		if len(config['contrast_overrides']) > 0:
+		if len(config['Stimuli settings']['contrast_overrides']) > 0:
 			# This is usually only used in practice mode
-			contrast = random.choice(config['contrast_overrides'])
+			contrast = random.choice(config['Stimuli settings']['contrast_overrides'])
 		else:
 			if stimParams[0] == 0:
 				contrast = 1
@@ -360,8 +353,8 @@ class PeripheralCSFTester():
 		stimString = 'F:%.2f, O:%.2f, C:%.2f, E:%.2f, P:%.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
 		self.updateHUD('thisStim', stimString)
 		expectedLabels = [
-			self.config['first_stimulus_key_label'],
-			self.config['second_stimulus_key_label'],
+			self.config['Input settings']['first_stimulus_key_label'],
+			self.config['Input settings']['second_stimulus_key_label'],
 		]
 
 		self.updateHUD('expectedResp', expectedLabels[whichStim])
@@ -370,18 +363,18 @@ class PeripheralCSFTester():
 
 		retries = 0
 		needToRetry = True
-		while retries <= self.config['retries'] and needToRetry:
+		while retries <= self.config['Gaze tracking']['retries'] and needToRetry:
 			retries += 1
-			if self.config['wait_for_ready_key']:
+			if self.config['Input settings']['wait_for_ready_key']:
 				self.waitForReadyKey()
 
-			if self.config['show_circular_fixation']:
+			if self.config['Gaze tracking']['show_circular_fixation']:
 				[_.draw() for _ in self.stayFixationStim]
 			else:
 				self.fixationStim.draw()
 			self.win.flip()
 			time.sleep(.5)
-			if self.config['wait_for_fixation']:
+			if self.config['Gaze tracking']['wait_for_fixation']:
 				if not self.waitForFixation():
 					needToRetry = True
 					self.config['gazeTone'].play()
@@ -390,13 +383,13 @@ class PeripheralCSFTester():
 			needToRetry = False
 
 			for i in range(2):
-				if self.config['wait_for_fixation']:
+				if self.config['Gaze tracking']['wait_for_fixation']:
 					gazePos = self.getGazePosition()
 					gazeAngle = math.sqrt(gazePos[0]**2 + gazePos[1]**2)
 
 					logging.info(f'Gaze pos: {gazePos}')
 					logging.info(f'Gaze angle: {gazeAngle}')
-					if gazeAngle > self.config['gaze_offset_max']:
+					if gazeAngle > self.config['Gaze tracking']['gaze_offset_max']:
 						self.config['gazeTone'].play()
 						logging.info('Participant looked away!')
 						needToRetry = True
@@ -404,7 +397,7 @@ class PeripheralCSFTester():
 
 				if whichStim == i:
 					self.stim.contrast = contrast
-					if self.config['render_at_gaze']:
+					if self.config['Gaze tracking']['render_at_gaze']:
 						gazePos = self.getGazePosition()
 						logging.info(f'Gaze pos: {gazePos}')
 						self.stim.pos = [
@@ -416,18 +409,18 @@ class PeripheralCSFTester():
 
 				self.config['sitmulusTone'].play() # play the tone
 				self.stim.draw()
-				if self.config['show_circular_fixation']:
+				if self.config['Gaze tracking']['show_circular_fixation']:
 					[_.draw() for _ in self.stayFixationStim]
 				self.win.flip()          # show the stimulus
 
-				time.sleep(self.config['stimulus_duration'] / 1000.0)
-				if self.config['show_circular_fixation']:
+				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
+				if self.config['Gaze tracking']['show_circular_fixation']:
 					[_.draw() for _ in self.stayFixationStim]
 				self.win.flip()          # hide the stimulus
 				if i < 1:
-					time.sleep(self.config['time_between_stimuli'] / 1000.0)     # pause between stimuli
+					time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
-			if self.config['show_circular_fixation']:
+			if self.config['Gaze tracking']['show_circular_fixation']:
 				[_.draw() for _ in self.stayFixationStim]
 			else:
 				self.fixationStim.draw()
@@ -447,7 +440,7 @@ class PeripheralCSFTester():
 					self.updateHUD('lastOk', '✘', (1, -1, -1))
 					self.config['negativeFeedback'].play()
 
-		if retries > self.config['retries']:
+		if retries > self.config['Gaze tracking']['retries']:
 			raise Exception('Max retries exceeded!')
 
 		self.win.flip()
@@ -460,7 +453,7 @@ class PeripheralCSFTester():
 
 	def waitForFixation(self, target=[0,0]):
 		logging.info(f'Waiting for fixation...')
-		distance = self.config['gaze_offset_max'] + 1
+		distance = self.config['Gaze tracking']['gaze_offset_max'] + 1
 		startTime = time.time()
 		fixationStartTime = None
 
@@ -476,15 +469,15 @@ class PeripheralCSFTester():
 			self.win.flip()
 
 			distance = math.sqrt((target[0]-pos[0])**2 + (target[1]-pos[1])**2)
-			if distance < self.config['gaze_offset_max']:
+			if distance < self.config['Gaze tracking']['gaze_offset_max']:
 				if fixationStartTime is None:
 					fixationStartTime = currentTime
-				elif currentTime - fixationStartTime > self.config['fixation_period']:
+				elif currentTime - fixationStartTime > self.config['Gaze tracking']['fixation_period']:
 					fixated = True
 			else:
 				fixationStartTime = None
 
-			if time.time() - startTime > self.config['max_wait_time']:
+			if time.time() - startTime > self.config['Gaze tracking']['max_wait_time']:
 				fixated = False
 
 		self.fixationStim.autoDraw = False
@@ -521,7 +514,7 @@ class PeripheralCSFTester():
 os.makedirs('data', exist_ok=True)
 config = getConfig()
 
-if config['wait_for_fixation'] or config['render_at_gaze']:
+if config['Gaze tracking']['wait_for_fixation'] or config['Gaze tracking']['render_at_gaze']:
 	import PyPupilGazeTracker
 	import PyPupilGazeTracker.smoothing
 	import PyPupilGazeTracker.PsychoPyVisuals
