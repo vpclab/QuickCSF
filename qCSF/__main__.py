@@ -137,7 +137,7 @@ class PeripheralCSFTester():
 
 	def setupHUD(self):
 		lineHeight = 40
-		xOffset = 225
+		xOffset = 325
 		yOffset = 10
 
 		self.hudElements = OrderedDict(
@@ -152,7 +152,7 @@ class PeripheralCSFTester():
 			stim, pos, labelText = self.hudElements[key]
 			if labelText is not None:
 				label = visual.TextStim(self.win, text=labelText+':')
-				pos = [30, pos[1]]
+				pos = [130, pos[1]]
 				self.hudElements[key+'_label'] = [label, pos, None]
 
 		for key in list(self.hudElements):
