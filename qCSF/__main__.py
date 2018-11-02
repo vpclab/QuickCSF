@@ -100,6 +100,8 @@ class PeripheralCSFTester():
 			)
 		]
 
+		self.annuli = None
+
 		if self.config['Gaze tracking']['wait_for_fixation'] or self.config['Gaze tracking']['render_at_gaze']:
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
 			self.gazeTracker = PyPupilGazeTracker.GazeTracker.GazeTracker(
@@ -372,6 +374,8 @@ class PeripheralCSFTester():
 				[_.draw() for _ in self.stayFixationStim]
 			else:
 				self.fixationStim.draw()
+
+			self.drawAnnuli()
 			self.win.flip()
 			time.sleep(.5)
 			if self.config['Gaze tracking']['wait_for_fixation']:
@@ -411,11 +415,15 @@ class PeripheralCSFTester():
 				self.stim.draw()
 				if self.config['Gaze tracking']['show_circular_fixation']:
 					[_.draw() for _ in self.stayFixationStim]
+
+				self.drawAnnuli()
 				self.win.flip()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
 				if self.config['Gaze tracking']['show_circular_fixation']:
 					[_.draw() for _ in self.stayFixationStim]
+
+				self.drawAnnuli()
 				self.win.flip()          # hide the stimulus
 				if i < 1:
 					time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between stimuli
@@ -424,6 +432,10 @@ class PeripheralCSFTester():
 				[_.draw() for _ in self.stayFixationStim]
 			else:
 				self.fixationStim.draw()
+
+			if self.config['Stimuli settings']['show_annuli']:
+				self.drawAnnuli()
+
 			self.win.flip()
 
 			if not needToRetry:
@@ -447,6 +459,31 @@ class PeripheralCSFTester():
 		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
+
+	def drawAnnuli(self):
+		if self.config['Stimuli settings']['show_annuli']:
+			if self.annuli is None:
+				self.annuli = []
+				for eccentricity in self.config['Stimuli settings']['eccentricities']:
+					print('Ecc: %s' % eccentricity)
+					for angle in self.config['Stimuli settings']['stimulus_position_angles']:
+						print('\tangle: %s' % angle)
+						pos = [
+							numpy.cos(angle * numpy.pi/180.0) * eccentricity,
+							numpy.sin(angle * numpy.pi/180.0) * eccentricity,
+						]
+						self.annuli.append(
+							visual.Circle(
+								self.win,
+								pos=pos,
+								radius = .7 * self.config['Stimuli settings']['stimulus_size'],
+								lineColor = 'black',
+								fillColor = None,
+								units = 'deg'
+							)
+						)
+			for circle in self.annuli:
+				circle.draw()
 
 	def waitForReadyKey(self):
 		self.showMessage('Ready?')

@@ -32,6 +32,7 @@ SETTINGS_GROUP = [
 		Setting('Time between stimuli',         int,                     1000, helpText='In ms'),
 		Setting('Contrast overrides',           typing.List[float],      []),
 		Setting('Stimulus size',                int,                     4, helpText='In degrees of visual angle'),
+		Setting('Show annuli',                  bool,                    False)
 
 	), ConfigGroup('Input settings',
 		Setting('First stimulus key',           str,     'num_4'),
@@ -39,7 +40,6 @@ SETTINGS_GROUP = [
 		Setting('First stimulus key label',     str,     '1'),
 		Setting('Second stimulus key label',    str,     '2'),
 		Setting('Wait for ready key',           bool,    True),
-
 	),
 ]
 
