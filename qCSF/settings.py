@@ -17,11 +17,12 @@ SETTINGS_GROUP = [
 		Setting('Render at gaze',              bool,      False),
 		Setting('Retries',                     int,       3),
 		Setting('Show gaze',                   bool,      False),
-		Setting('Show circular fixation',      bool,      False),
 
 	), ConfigGroup('Display settings',
 		Setting('Monitor distance',   int,    57, helpText='In cm'),
 		Setting('Fixation size',      int,    20, helpText='In arcmin'),
+		Setting('Show fixation aid',  bool,   False),
+		Setting('Show annuli',        bool,   False)
 
 	), ConfigGroup('Stimuli settings',
 		Setting('Eccentricities',               typing.List[int],        [4, 8, 12], helpText='In degrees'),
@@ -32,7 +33,6 @@ SETTINGS_GROUP = [
 		Setting('Time between stimuli',         int,                     1000, helpText='In ms'),
 		Setting('Contrast overrides',           typing.List[float],      []),
 		Setting('Stimulus size',                int,                     4, helpText='In degrees of visual angle'),
-		Setting('Show annuli',                  bool,                    False)
 
 	), ConfigGroup('Input settings',
 		Setting('First stimulus key',           str,     'num_4'),

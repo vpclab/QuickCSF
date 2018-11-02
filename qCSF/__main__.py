@@ -88,7 +88,7 @@ class PeripheralCSFTester():
 			(-0.5, 0), (0.5, 0),
 		)
 		self.fixationStim = visual.ShapeStim(self.win, vertices=fixationVertices, lineColor=-1, closeShape=False, size=self.config['Display settings']['fixation_size']/60.0)
-		self.stayFixationStim = [
+		self.fixationAid = [
 			visual.Circle(self.win,
 				radius = self.config['Gaze tracking']['gaze_offset_max'] * .5,
 				lineColor = 'black',
@@ -370,8 +370,8 @@ class PeripheralCSFTester():
 			if self.config['Input settings']['wait_for_ready_key']:
 				self.waitForReadyKey()
 
-			if self.config['Gaze tracking']['show_circular_fixation']:
-				[_.draw() for _ in self.stayFixationStim]
+			if self.config['Display settings']['show_fixation_aid']:
+				self.drawFixationAid()
 			else:
 				self.fixationStim.draw()
 
@@ -413,28 +413,25 @@ class PeripheralCSFTester():
 
 				self.config['sitmulusTone'].play() # play the tone
 				self.stim.draw()
-				if self.config['Gaze tracking']['show_circular_fixation']:
-					[_.draw() for _ in self.stayFixationStim]
+				self.drawFixationAid()
 
 				self.drawAnnuli()
 				self.win.flip()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
-				if self.config['Gaze tracking']['show_circular_fixation']:
-					[_.draw() for _ in self.stayFixationStim]
+				self.drawFixationAid()
 
 				self.drawAnnuli()
 				self.win.flip()          # hide the stimulus
 				if i < 1:
 					time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between stimuli
 
-			if self.config['Gaze tracking']['show_circular_fixation']:
-				[_.draw() for _ in self.stayFixationStim]
+			if self.config['Display settings']['show_fixation_aid']:
+				self.drawFixationAid()
 			else:
 				self.fixationStim.draw()
 
-			if self.config['Stimuli settings']['show_annuli']:
-				self.drawAnnuli()
+			self.drawAnnuli()
 
 			self.win.flip()
 
@@ -460,8 +457,12 @@ class PeripheralCSFTester():
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
 
+	def drawFixationAid(self):
+		if self.config['Display settings']['show_fixation_aid']:
+			[_.draw() for _ in self.fixationAid]
+
 	def drawAnnuli(self):
-		if self.config['Stimuli settings']['show_annuli']:
+		if self.config['Display settings']['show_annuli']:
 			if self.annuli is None:
 				self.annuli = []
 				for eccentricity in self.config['Stimuli settings']['eccentricities']:
