@@ -100,7 +100,45 @@ class PeripheralCSFTester():
 			)
 		]
 
-		self.annuli = None
+		if self.config['Display settings']['show_annuli']:
+			self.annuli = []
+			for eccentricity in self.config['Stimuli settings']['eccentricities']:
+				for angle in self.config['Stimuli settings']['stimulus_position_angles']:
+					pos = [
+						numpy.cos(angle * numpy.pi/180.0) * eccentricity,
+						numpy.sin(angle * numpy.pi/180.0) * eccentricity,
+					]
+					self.annuli.append(
+						visual.Circle(
+							self.win,
+							pos=pos,
+							radius = .7 * self.config['Stimuli settings']['stimulus_size'],
+							lineColor = 'black',
+							fillColor = None,
+							units = 'deg'
+						)
+					)
+
+		if self.config['Stimuli settings']['mask_time'] > 0:
+			self.masks = []
+			size = self.config['Stimuli settings']['stimulus_size']
+			for eccentricity in self.config['Stimuli settings']['eccentricities']:
+				for angle in self.config['Stimuli settings']['stimulus_position_angles']:
+					pos = [
+						numpy.cos(angle * numpy.pi/180.0) * eccentricity,
+						numpy.sin(angle * numpy.pi/180.0) * eccentricity,
+					]
+					self.masks.append(
+						visual.NoiseStim(
+							self.win,
+							pos=pos,
+							size=[size,size],
+							mask='circle',
+							units = 'deg',
+							noiseType='White',
+							noiseElementSize=4,
+						)
+					)
 
 		if self.config['Gaze tracking']['wait_for_fixation'] or self.config['Gaze tracking']['render_at_gaze']:
 			self.screenMarkers = PyPupilGazeTracker.PsychoPyVisuals.ScreenMarkers(self.win)
@@ -419,12 +457,14 @@ class PeripheralCSFTester():
 				self.win.flip()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
+				self.applyMasks()
 				self.drawFixationAid()
-
 				self.drawAnnuli()
 				self.win.flip()          # hide the stimulus
+
+				interStimulusTime = self.config['Stimuli settings']['time_between_stimuli'] / 1000.0
 				if i < 1:
-					time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between stimuli
+					time.sleep(interStimulusTime)     # pause between stimuli
 
 			if self.config['Display settings']['show_fixation_aid']:
 				self.drawFixationAid()
@@ -432,7 +472,6 @@ class PeripheralCSFTester():
 				self.fixationStim.draw()
 
 			self.drawAnnuli()
-
 			self.win.flip()
 
 			if not needToRetry:
@@ -457,32 +496,22 @@ class PeripheralCSFTester():
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
 
+	def applyMasks(self):
+		if self.config['Stimuli settings']['mask_time'] > 0:
+			for mask in self.masks:
+				mask.draw()
+
+			self.drawFixationAid()
+			self.drawAnnuli()
+			self.win.flip()
+			time.sleep(self.config['Stimuli settings']['mask_time']/1000)
+
 	def drawFixationAid(self):
 		if self.config['Display settings']['show_fixation_aid']:
 			[_.draw() for _ in self.fixationAid]
 
 	def drawAnnuli(self):
 		if self.config['Display settings']['show_annuli']:
-			if self.annuli is None:
-				self.annuli = []
-				for eccentricity in self.config['Stimuli settings']['eccentricities']:
-					print('Ecc: %s' % eccentricity)
-					for angle in self.config['Stimuli settings']['stimulus_position_angles']:
-						print('\tangle: %s' % angle)
-						pos = [
-							numpy.cos(angle * numpy.pi/180.0) * eccentricity,
-							numpy.sin(angle * numpy.pi/180.0) * eccentricity,
-						]
-						self.annuli.append(
-							visual.Circle(
-								self.win,
-								pos=pos,
-								radius = .7 * self.config['Stimuli settings']['stimulus_size'],
-								lineColor = 'black',
-								fillColor = None,
-								units = 'deg'
-							)
-						)
 			for circle in self.annuli:
 				circle.draw()
 

@@ -33,6 +33,7 @@ SETTINGS_GROUP = [
 		Setting('Time between stimuli',         int,                     1000, helpText='In ms'),
 		Setting('Contrast overrides',           typing.List[float],      []),
 		Setting('Stimulus size',                int,                     4, helpText='In degrees of visual angle'),
+		Setting('Mask time',                    int,                     0, helpText='In ms'),
 
 	), ConfigGroup('Input settings',
 		Setting('First stimulus key',           str,     'num_4'),
