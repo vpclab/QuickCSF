@@ -446,8 +446,9 @@ class PeripheralCSFTester():
 							self.stim.pos[0] + gazePos[0],
 							self.stim.pos[1] + gazePos[1]
 						]
+					self.stim.opacity = 1
 				else:
-					self.stim.contrast = 0
+					self.stim.opacity = 0
 
 				self.config['sitmulusTone'].play() # play the tone
 				self.stim.draw()
