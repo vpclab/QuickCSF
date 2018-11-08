@@ -79,7 +79,7 @@ class PeripheralCSFTester():
 		self.mon.setSizePix(resolution)
 		self.mon.save()
 
-		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution)
+		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution, color=self.config['Display settings']['background_color'])
 
 		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['Stimuli settings']['stimulus_size'], mask='gauss')
 		fixationVertices = (
@@ -113,7 +113,7 @@ class PeripheralCSFTester():
 							self.win,
 							pos=pos,
 							radius = .7 * self.config['Stimuli settings']['stimulus_size'],
-							lineColor = 'black',
+							lineColor = self.config['Display settings']['annuli_color'],
 							fillColor = None,
 							units = 'deg'
 						)

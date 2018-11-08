@@ -19,10 +19,12 @@ SETTINGS_GROUP = [
 		Setting('Show gaze',                   bool,      False),
 
 	), ConfigGroup('Display settings',
-		Setting('Monitor distance',   int,    57, helpText='In cm'),
-		Setting('Fixation size',      int,    20, helpText='In arcmin'),
-		Setting('Show fixation aid',  bool,   False),
-		Setting('Show annuli',        bool,   False)
+		Setting('Monitor distance',   int,  57,        helpText='In cm'),
+		Setting('Background color',   str,  '#808080', helpText='Web-safe names or hex codes (#4f2cff)'),
+		Setting('Fixation size',      int,  20,        helpText='In arcmin'),
+		Setting('Show fixation aid',  bool, False),
+		Setting('Show annuli',        bool, False),
+		Setting('Annuli color',       str,  '#ffffff', helpText='Web-safe names or hex codes (#4f2cff)'),
 
 	), ConfigGroup('Stimuli settings',
 		Setting('Eccentricities',               typing.List[int],        [4, 8, 12], helpText='In degrees'),
@@ -38,7 +40,7 @@ SETTINGS_GROUP = [
 	), ConfigGroup('Input settings',
 		Setting('First stimulus key',           str,     'num_4'),
 		Setting('Second stimulus key',          str,     'num_6'),
-		Setting('First stimulus key label',     str,     '1'),
+		Setting('First stimulus key label',     str,     '1'), 
 		Setting('Second stimulus key label',    str,     '2'),
 		Setting('Wait for ready key',           bool,    True),
 	),
