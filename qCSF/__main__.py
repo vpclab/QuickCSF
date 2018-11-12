@@ -101,14 +101,16 @@ class PeripheralCSFTester():
 		]
 
 		if self.config['Display settings']['show_annuli']:
-			self.annuli = []
+			self.annuli = {}
 			for eccentricity in self.config['Stimuli settings']['eccentricities']:
+				self.annuli[eccentricity] = []
+
 				for angle in self.config['Stimuli settings']['stimulus_position_angles']:
 					pos = [
 						numpy.cos(angle * numpy.pi/180.0) * eccentricity,
 						numpy.sin(angle * numpy.pi/180.0) * eccentricity,
 					]
-					self.annuli.append(
+					self.annuli[eccentricity].append(
 						visual.Circle(
 							self.win,
 							pos=pos,
@@ -120,15 +122,16 @@ class PeripheralCSFTester():
 					)
 
 		if self.config['Stimuli settings']['mask_time'] > 0:
-			self.masks = []
+			self.masks = {}
 			size = self.config['Stimuli settings']['stimulus_size']
 			for eccentricity in self.config['Stimuli settings']['eccentricities']:
+				self.masks[eccentricity] = []
 				for angle in self.config['Stimuli settings']['stimulus_position_angles']:
 					pos = [
 						numpy.cos(angle * numpy.pi/180.0) * eccentricity,
 						numpy.sin(angle * numpy.pi/180.0) * eccentricity,
 					]
-					self.masks.append(
+					self.masks[eccentricity].append(
 						visual.NoiseStim(
 							self.win,
 							pos=pos,
@@ -406,6 +409,7 @@ class PeripheralCSFTester():
 		while retries <= self.config['Gaze tracking']['retries'] and needToRetry:
 			retries += 1
 			if self.config['Input settings']['wait_for_ready_key']:
+				self.drawAnnuli(trial.eccentricity)
 				self.waitForReadyKey()
 
 			if self.config['Display settings']['show_fixation_aid']:
@@ -413,7 +417,7 @@ class PeripheralCSFTester():
 			else:
 				self.fixationStim.draw()
 
-			self.drawAnnuli()
+			self.drawAnnuli(trial.eccentricity)
 			self.win.flip()
 			time.sleep(.5)
 			if self.config['Gaze tracking']['wait_for_fixation']:
@@ -454,13 +458,13 @@ class PeripheralCSFTester():
 				self.stim.draw()
 				self.drawFixationAid()
 
-				self.drawAnnuli()
+				self.drawAnnuli(trial.eccentricity)
 				self.win.flip()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
-				self.applyMasks()
+				self.applyMasks(trial.eccentricity)
 				self.drawFixationAid()
-				self.drawAnnuli()
+				self.drawAnnuli(trial.eccentricity)
 				self.win.flip()          # hide the stimulus
 
 				interStimulusTime = self.config['Stimuli settings']['time_between_stimuli'] / 1000.0
@@ -472,7 +476,7 @@ class PeripheralCSFTester():
 			else:
 				self.fixationStim.draw()
 
-			self.drawAnnuli()
+			self.drawAnnuli(trial.eccentricity)
 			self.win.flip()
 
 			if not needToRetry:
@@ -497,13 +501,19 @@ class PeripheralCSFTester():
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
 
-	def applyMasks(self):
+	def applyMasks(self, eccentricity=None):
 		if self.config['Stimuli settings']['mask_time'] > 0:
-			for mask in self.masks:
-				mask.draw()
+			if eccentricity is None:
+				eccentricities = self.annuli.keys()
+			else:
+				eccentricities = [eccentricity]
+
+			for ecc in eccentricities:
+				for mask in self.masks[ecc]:
+					mask.draw()
 
 			self.drawFixationAid()
-			self.drawAnnuli()
+			self.drawAnnuli(eccentricity)
 			self.win.flip()
 			time.sleep(self.config['Stimuli settings']['mask_time']/1000)
 
@@ -511,10 +521,16 @@ class PeripheralCSFTester():
 		if self.config['Display settings']['show_fixation_aid']:
 			[_.draw() for _ in self.fixationAid]
 
-	def drawAnnuli(self):
+	def drawAnnuli(self, eccentricity=None):
 		if self.config['Display settings']['show_annuli']:
-			for circle in self.annuli:
-				circle.draw()
+			if eccentricity is None:
+				eccentricities = self.annuli.keys()
+			else:
+				eccentricities = [eccentricity]
+
+			for eccentricity in eccentricities:
+				for circle in self.annuli[eccentricity]:
+					circle.draw()
 
 	def waitForReadyKey(self):
 		self.showMessage('Ready?')
