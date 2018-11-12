@@ -331,8 +331,20 @@ class PeripheralCSFTester():
 			random.shuffle(block['trials'])
 			self.blocks.append(block)
 
-		random.shuffle(self.blocks)
+		if self.config['General settings']['practice']:
+			self.history = [0] * self.config['General settings']['practice_history']
+			combinedBlock = {
+				'eccentricity': -1,
+				'trials': []
+			}
 
+			for block in self.blocks:
+				combinedBlock['trials'] += block['trials']
+
+			random.shuffle(combinedBlock['trials'])
+			self.blocks = [combinedBlock]
+
+		random.shuffle(self.blocks)
 		for block in self.blocks:
 			logging.debug('Block eccentricity: {eccentricity}'.format(**block))
 			for trial in block['trials']:
@@ -354,6 +366,10 @@ class PeripheralCSFTester():
 
 				time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, stepHandlers[trial.orientation])
+				if self.config['General settings']['practice']:
+					if sum(self.history) >= self.config['General settings']['practice_streak']:
+						logging.info('Practice completed!')
+						break
 
 			self.disableHUD()
 			# Write output
@@ -500,6 +516,9 @@ class PeripheralCSFTester():
 		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
+		if self.config['General settings']['practice']:
+			self.history.pop(0)
+			self.history.append(1 if correct else 0)
 
 	def applyMasks(self, eccentricity=None):
 		if self.config['Stimuli settings']['mask_time'] > 0:

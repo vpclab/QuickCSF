@@ -8,6 +8,9 @@ SETTINGS_GROUP = [
 	ConfigGroup('General settings',
 		Setting('Session ID',           str, '', helpText='ex. Day1_ParticipantID'),
 		Setting('Data filename',        str, 'data/PCSF_{start_time}_{session_id}'),
+		Setting('Practice',             bool,   False),
+		Setting('Practice streak',      int, 2,  helpText='The number of trials the participant must get right out of the past {history} for the program to end'),
+		Setting('Practice history',     int, 5, helpText='The number of trials the program looks at when looking for a streak'),
 
 	), ConfigGroup('Gaze tracking',
 		Setting('Wait for fixation',           bool,      False),
@@ -27,6 +30,7 @@ SETTINGS_GROUP = [
 		Setting('Annuli color',       str,  '#ffffff', helpText='Web-safe names or hex codes (#4f2cff)'),
 
 	), ConfigGroup('Stimuli settings',
+		# Practice settings
 		Setting('Eccentricities',               typing.List[int],        [4, 8, 12], helpText='In degrees'),
 		Setting('Orientations',                 typing.List[float],      [45, 67.5, 90, 112.5, 135], helpText='In degrees'),
 		Setting('Stimulus position angles',     typing.List[int],        [45, 135, 225, 315], helpText='In degrees'),
