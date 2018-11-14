@@ -397,10 +397,16 @@ class PeripheralCSFTester():
 			self.disableHUD()
 
 			# Write output
-			for nonBlockedValue in self.config['Stimuli settings'][nonBlockedKey]:
-				eccentricity, orientation = self.blockVarsToEccentricityAndOrientation(blockSeparatorKey, block['blockValue'], nonBlockedKey, nonBlockedValue)
-				result = self.stepHandlers[eccentricity][orientation].getBestParameters().T
-				self.writeOutput(eccentricity, orientation, result)
+			if self.config['General settings']['practice']:
+				for eccentricity, eccDicts in self.stepHandlers.items():
+					for orientation, stepHandler in eccDicts.items():
+						result = self.stepHandlers[eccentricity][orientation].getBestParameters().T
+						self.writeOutput(eccentricity, orientation, result)
+			else:
+				for nonBlockedValue in self.config['Stimuli settings'][nonBlockedKey]:
+					eccentricity, orientation = self.blockVarsToEccentricityAndOrientation(blockSeparatorKey, block['blockValue'], nonBlockedValue)
+					result = self.stepHandlers[eccentricity][orientation].getBestParameters().T
+					self.writeOutput(eccentricity, orientation, result)
 
 			# Take a break if it's time
 			if blockCounter < len(self.blocks)-1:
