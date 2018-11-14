@@ -313,12 +313,26 @@ class PeripheralCSFTester():
 			]
 		'''
 		self.blocks = []
-		for eccentricity in self.config['Stimuli settings']['eccentricities']:
+		blockSeparatorKey = self.config['General settings']['separate_blocks_by'].lower()
+		if blockSeparatorKey == 'orientations':
+			nonBlockedKey = 'eccentricities'
+		else:
+			nonBlockedKey = 'orientations'
+
+		for blockValue in self.config['Stimuli settings'][blockSeparatorKey]:
 			block = {
-				'eccentricity': eccentricity,
+				'blockBy': blockSeparatorKey,
+				'blockValue': blockValue,
 				'trials': [],
 			}
-			for orientation in self.config['Stimuli settings']['orientations']:
+			for nonBlockValue in self.config['Stimuli settings'][nonBlockedKey]:
+				if blockSeparatorKey == 'orienations':
+					orientation = blockValue
+					eccentricity = nonBlockValue
+				else:
+					orientation = nonBlockValue
+					eccentricity = blockValue
+
 				possibleAngles = []
 
 				for configTrial in range(self.config['Stimuli settings']['trials_per_stimulus_config']):
@@ -334,7 +348,8 @@ class PeripheralCSFTester():
 		if self.config['General settings']['practice']:
 			self.history = [0] * self.config['General settings']['practice_history']
 			combinedBlock = {
-				'eccentricity': -1,
+				'blockBy': None,
+				'blockValue': None,
 				'trials': []
 			}
 
@@ -346,7 +361,7 @@ class PeripheralCSFTester():
 
 		random.shuffle(self.blocks)
 		for block in self.blocks:
-			logging.debug('Block eccentricity: {eccentricity}'.format(**block))
+			logging.debug('Block by {blockBy}:{blockValue}'.format(**block))
 			for trial in block['trials']:
 				logging.debug(f'\t{trial}')
 

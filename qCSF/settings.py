@@ -11,6 +11,7 @@ SETTINGS_GROUP = [
 		Setting('Practice',             bool,   False),
 		Setting('Practice streak',      int, 2,  helpText='The number of trials the participant must get right out of the past {history} for the program to end'),
 		Setting('Practice history',     int, 5, helpText='The number of trials the program looks at when looking for a streak'),
+		Setting('Separate blocks by',   str, 'Orientations', allowedValues=['Orientations', 'Eccentricities'])
 
 	), ConfigGroup('Gaze tracking',
 		Setting('Wait for fixation',           bool,      False),
