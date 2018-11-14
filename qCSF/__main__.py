@@ -378,6 +378,7 @@ class PeripheralCSFTester():
 
 	def runBlocks(self):
 		blockSeparatorKey, nonBlockedKey = self.getBlockAndNonBlock()
+		practiceWentOk = False
 
 		for blockCounter, block in enumerate(self.blocks):
 			# Show instructions
@@ -392,6 +393,7 @@ class PeripheralCSFTester():
 				if self.config['General settings']['practice']:
 					if sum(self.history) >= self.config['General settings']['practice_streak']:
 						logging.info('Practice completed!')
+						practiceWentOk = True
 						break
 
 			self.disableHUD()
@@ -414,6 +416,10 @@ class PeripheralCSFTester():
 				self.takeABreak()
 
 		logging.debug('User is done!')
+		if self.config['General settings']['practice']:
+			return practiceWentOk
+		else:
+			return True
 
 	def runTrial(self, trial, stepHandler):
 		stimParams = stepHandler.next()[0]
@@ -626,11 +632,17 @@ class PeripheralCSFTester():
 		return PyPupilGazeTracker.PsychoPyVisuals.screenToMonitorCenterDeg(self.mon, pos)
 
 	def start(self):
+		exitCode = 0
 		try:
-			self.runBlocks()
+			if not self.runBlocks():
+				logging.info('Participant failed practice')
+				exitCode = 66
 		except UserExit as exc:
+			exitCode = 2
 			logging.info(exc)
 		except Exception as exc:
+			exitCode = 1
+			
 			print(exc)
 			traceback.print_exc()
 			logging.critical(exc)
@@ -643,7 +655,7 @@ class PeripheralCSFTester():
 		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.')
 
 		self.win.close()
-		core.quit()
+		core.quit(exitCode)
 
 os.makedirs('data', exist_ok=True)
 config = getConfig()
