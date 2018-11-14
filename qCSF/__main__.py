@@ -635,15 +635,15 @@ class PeripheralCSFTester():
 		exitCode = 0
 		try:
 			if not self.runBlocks():
-				logging.info('Participant failed practice')
+				logging.critical('Participant failed practice')
 				exitCode = 66
 		except UserExit as exc:
 			exitCode = 2
 			logging.info(exc)
 		except Exception as exc:
 			exitCode = 1
-			
-			print(exc)
+
+			print('Exception: %s' % exc)
 			traceback.print_exc()
 			logging.critical(exc)
 			self.showMessage('Something went wrong!\n\nPlease let the research assistant know.')
