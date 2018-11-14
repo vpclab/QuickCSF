@@ -9,8 +9,8 @@ SETTINGS_GROUP = [
 		Setting('Session ID',           str, '', helpText='ex. Day1_ParticipantID'),
 		Setting('Data filename',        str, 'data/PCSF_{start_time}_{session_id}'),
 		Setting('Practice',             bool,   False),
-		Setting('Practice streak',      int, 2,  helpText='The number of trials the participant must get right out of the past {history} for the program to end'),
-		Setting('Practice history',     int, 5, helpText='The number of trials the program looks at when looking for a streak'),
+		Setting('Practice streak',      int, 8,  helpText='The number of trials the participant must get right out of the past {history} for the program to end'),
+		Setting('Practice history',     int, 10, helpText='The number of trials the program looks at when looking for a streak'),
 		Setting('Separate blocks by',   str, 'Orientations', allowedValues=['Orientations', 'Eccentricities'])
 
 	), ConfigGroup('Gaze tracking',

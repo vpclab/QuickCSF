@@ -304,6 +304,21 @@ class PeripheralCSFTester():
 
 		return correct
 
+	def getBlockAndNonBlock(self):
+		blockSeparatorKey = self.config['General settings']['separate_blocks_by'].lower()
+		if blockSeparatorKey == 'orientations':
+			nonBlockedKey = 'eccentricities'
+		else:
+			nonBlockedKey = 'orientations'
+
+		return blockSeparatorKey, nonBlockedKey
+
+	def blockVarsToEccentricityAndOrientation(self, blockVarName, blockVarValue, nonBlockVarValue):
+		if blockVarName == 'eccentricities':
+			return blockVarValue, nonBlockVarValue
+		else:
+			return nonBlockVarValue, blockVarValue
+
 	def setupBlocks(self):
 		'''
 			blocks = [
@@ -313,26 +328,22 @@ class PeripheralCSFTester():
 			]
 		'''
 		self.blocks = []
-		blockSeparatorKey = self.config['General settings']['separate_blocks_by'].lower()
-		if blockSeparatorKey == 'orientations':
-			nonBlockedKey = 'eccentricities'
-		else:
-			nonBlockedKey = 'orientations'
 
+		self.stepHandlers = {}
+		for eccentricity in self.config['Stimuli settings']['eccentricities']:
+			self.stepHandlers[eccentricity] = {}
+			for orientation in self.config['Stimuli settings']['orientations']:
+				self.stepHandlers[eccentricity][orientation] = self.setupStepHandler()
+
+		blockSeparatorKey, nonBlockedKey = self.getBlockAndNonBlock()
 		for blockValue in self.config['Stimuli settings'][blockSeparatorKey]:
 			block = {
 				'blockBy': blockSeparatorKey,
 				'blockValue': blockValue,
 				'trials': [],
 			}
-			for nonBlockValue in self.config['Stimuli settings'][nonBlockedKey]:
-				if blockSeparatorKey == 'orienations':
-					orientation = blockValue
-					eccentricity = nonBlockValue
-				else:
-					orientation = nonBlockValue
-					eccentricity = blockValue
-
+			for nonBlockedValue in self.config['Stimuli settings'][nonBlockedKey]:
+				eccentricity, orientation = self.blockVarsToEccentricityAndOrientation(blockSeparatorKey, blockValue, nonBlockedValue)
 				possibleAngles = []
 
 				for configTrial in range(self.config['Stimuli settings']['trials_per_stimulus_config']):
@@ -366,12 +377,9 @@ class PeripheralCSFTester():
 				logging.debug(f'\t{trial}')
 
 	def runBlocks(self):
-		for blockCounter, block in enumerate(self.blocks):
-			# Setup a step handler for each orientation
-			stepHandlers = {}
-			for orientation in self.config['Stimuli settings']['orientations']:
-				stepHandlers[orientation] = self.setupStepHandler()
+		blockSeparatorKey, nonBlockedKey = self.getBlockAndNonBlock()
 
+		for blockCounter, block in enumerate(self.blocks):
 			# Show instructions
 			self.showInstructions(blockCounter==0)
 			# Run each trial in this block
@@ -380,17 +388,19 @@ class PeripheralCSFTester():
 				self.win.flip()
 
 				time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between trials
-				self.runTrial(trial, stepHandlers[trial.orientation])
+				self.runTrial(trial, self.stepHandlers[trial.eccentricity][trial.orientation])
 				if self.config['General settings']['practice']:
 					if sum(self.history) >= self.config['General settings']['practice_streak']:
 						logging.info('Practice completed!')
 						break
 
 			self.disableHUD()
+
 			# Write output
-			for orientation in self.config['Stimuli settings']['orientations']:
-				result = stepHandlers[orientation].getBestParameters().T
-				self.writeOutput(block['eccentricity'], orientation, result)
+			for nonBlockedValue in self.config['Stimuli settings'][nonBlockedKey]:
+				eccentricity, orientation = self.blockVarsToEccentricityAndOrientation(blockSeparatorKey, block['blockValue'], nonBlockedKey, nonBlockedValue)
+				result = self.stepHandlers[eccentricity][orientation].getBestParameters().T
+				self.writeOutput(eccentricity, orientation, result)
 
 			# Take a break if it's time
 			if blockCounter < len(self.blocks)-1:
