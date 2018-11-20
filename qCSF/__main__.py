@@ -124,6 +124,8 @@ class PeripheralCSFTester():
 		if self.config['Stimuli settings']['mask_time'] > 0:
 			self.masks = {}
 			size = self.config['Stimuli settings']['stimulus_size']
+			maskImagePath = assets.getFilePath(os.path.join('assets', 'qCSF', 'mask.png'))
+
 			for eccentricity in self.config['Stimuli settings']['eccentricities']:
 				self.masks[eccentricity] = []
 				for angle in self.config['Stimuli settings']['stimulus_position_angles']:
@@ -132,14 +134,11 @@ class PeripheralCSFTester():
 						numpy.sin(angle * numpy.pi/180.0) * eccentricity,
 					]
 					self.masks[eccentricity].append(
-						visual.NoiseStim(
+						visual.ImageStim(
 							self.win,
+							image=maskImagePath,
 							pos=pos,
 							size=[size,size],
-							mask='circle',
-							units = 'deg',
-							noiseType='White',
-							noiseElementSize=4,
 						)
 					)
 
