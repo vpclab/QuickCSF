@@ -114,7 +114,7 @@ class PeripheralCSFTester():
 						visual.Circle(
 							self.win,
 							pos=pos,
-							radius = .7 * self.config['Stimuli settings']['stimulus_size'],
+							radius = .7 * monitorTools.scaleSizeByEccentricity(self.config['Stimuli settings']['stimulus_size'], eccentricity),
 							lineColor = self.config['Display settings']['annuli_color'],
 							fillColor = None,
 							units = 'deg'
@@ -138,7 +138,7 @@ class PeripheralCSFTester():
 							self.win,
 							image=maskImagePath,
 							pos=pos,
-							size=[size,size],
+							size=monitorTools.scaleSizeByEccentricity(size, eccentricity),
 						)
 					)
 
@@ -444,6 +444,7 @@ class PeripheralCSFTester():
 			numpy.cos(trial.stimPositionAngle * numpy.pi/180.0) * trial.eccentricity,
 			numpy.sin(trial.stimPositionAngle * numpy.pi/180.0) * trial.eccentricity,
 		)
+		self.stim.size = monitorTools.scaleSizeByEccentricity(self.config['Stimuli settings']['stimulus_size'], trial.eccentricity)
 
 		stimString = 'F:%.2f, O:%.2f, C:%.2f, E:%.2f, P:%.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
 		self.updateHUD('thisStim', stimString)
@@ -574,6 +575,7 @@ class PeripheralCSFTester():
 
 	def drawFixationAid(self):
 		if self.config['Display settings']['show_fixation_aid']:
+			print('Fixation aid: ', self.fixationAid)
 			[_.draw() for _ in self.fixationAid]
 
 	def drawAnnuli(self, eccentricity=None):
