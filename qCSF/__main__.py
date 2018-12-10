@@ -605,7 +605,7 @@ class PeripheralCSFTester():
 			currentTime = time.time()
 			pos = self.getGazePosition()
 			self.gazeMarker.pos = pos
-			if self.config['show_gaze']:
+			if self.confi['Gaze tracking']['show_gaze']:
 				self.gazeMarker.draw()
 			self.win.flip()
 
