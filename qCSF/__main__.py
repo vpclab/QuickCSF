@@ -253,10 +253,16 @@ class PeripheralCSFTester():
 		instructionsStim.draw()
 
 		self.win.flip()
+		keepWaiting = True
+		while keepWaiting:
+			keys = event.waitKeys()
+			if 'c' in keys and self.gazeTracker is not None:
+				self.gazeTracker.doCalibration()
+			else:
+				keepWaiting = False
 
-		keys = event.waitKeys()
-		if 'escape' in keys:
-			raise UserExit()
+			if 'escape' in keys:
+				raise UserExit()
 
 	def showInstructions(self, firstTime=False):
 		key1 = self.config['Input settings']['first_stimulus_key_label']
