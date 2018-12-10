@@ -8,6 +8,9 @@ import logging
 from functools import partial
 from collections import OrderedDict
 
+import monitorTools
+import qcsf, settings, assets
+
 import psychopy
 
 psychopy.prefs.general['audioLib'] = ['pyo','pygame', 'sounddevice']
@@ -15,9 +18,6 @@ psychopy.prefs.general['audioLib'] = ['pyo','pygame', 'sounddevice']
 from psychopy import core, visual, gui, data, event, monitors, sound, tools
 import numpy
 
-import qcsf, settings, assets
-
-import monitorTools
 
 class Trial():
 	def __init__(self, eccentricity, orientation, stimPositionAngle):
@@ -172,22 +172,22 @@ class PeripheralCSFTester():
 
 	def setupHUD(self):
 		lineHeight = 40
-		xOffset = 325
+		xOffset = 225
 		yOffset = 10
 
 		self.hudElements = OrderedDict(
 			lastStim = [visual.TextStim(self.win, text=' '), [xOffset, 0 + yOffset], 'Last stim'],
-			lastResp = [visual.TextStim(self.win, text=' '), [xOffset + 40, lineHeight + yOffset], None],
-			lastOk = [visual.TextStim(self.win, text=' '), [xOffset -10, lineHeight + yOffset], 'Last resp'],
-			thisStim = [visual.TextStim(self.win, text=' '), [xOffset, 2*lineHeight + yOffset], 'This stim'],
-			expectedResp = [visual.TextStim(self.win, text=' '), [xOffset, 3*lineHeight + yOffset], 'Exp resp'],
+			lastResp = [visual.TextStim(self.win, text=' '), [xOffset + 40, 6*lineHeight + yOffset], None],
+			lastOk = [visual.TextStim(self.win, text=' '), [xOffset -10, 6*lineHeight + yOffset], 'Last resp'],
+			thisStim = [visual.TextStim(self.win, text=' '), [xOffset, 8*lineHeight + yOffset], 'This stim'],
+			expectedResp = [visual.TextStim(self.win, text=' '), [xOffset, 14*lineHeight + yOffset], 'Exp resp'],
 		)
 
 		for key in list(self.hudElements):
 			stim, pos, labelText = self.hudElements[key]
 			if labelText is not None:
 				label = visual.TextStim(self.win, text=labelText+':')
-				pos = [130, pos[1]]
+				pos = [30, pos[1]]
 				self.hudElements[key+'_label'] = [label, pos, None]
 
 		for key in list(self.hudElements):
@@ -446,7 +446,7 @@ class PeripheralCSFTester():
 		)
 		self.stim.size = monitorTools.scaleSizeByEccentricity(self.config['Stimuli settings']['stimulus_size'], trial.eccentricity)
 
-		stimString = 'F:%.2f, O:%.2f, C:%.2f, E:%.2f, P:%.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
+		stimString = '\nF: %.2f\nO: %.2f\nC: %.2f\nE: %.2f\nP: %.2f' % (frequency, trial.orientation, contrast, trial.eccentricity, trial.stimPositionAngle)
 		self.updateHUD('thisStim', stimString)
 		expectedLabels = [
 			self.config['Input settings']['first_stimulus_key_label'],

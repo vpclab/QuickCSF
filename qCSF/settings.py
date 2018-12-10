@@ -1,8 +1,7 @@
 import typing
 from ConfigHelper import ConfigHelper, ConfigGroup, Setting # https://git.vpclab.com/VPCLab/ConfigHelper
-from PySide2.QtWidgets import QApplication
 
-PROGRAM_NAME = 'PyOrientationDiscrimination'
+PROGRAM_NAME = 'qCSF'
 
 SETTINGS_GROUP = [
 	ConfigGroup('General settings',
@@ -53,7 +52,7 @@ SETTINGS_GROUP = [
 ]
 
 def getSettings(filename = f'{PROGRAM_NAME}-settings.ini'):
-	print(filename)
-	if QApplication.instance() is None:
-		_ = QApplication(['tmpApplication'])
+#	print(filename)
+#	if QApplication.instance() is None:
+#		_ = QApplication(['tmpApplication'])
 	return ConfigHelper(SETTINGS_GROUP, filename).getSettings()
