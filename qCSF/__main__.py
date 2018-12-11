@@ -645,7 +645,6 @@ class PeripheralCSFTester():
 
 			if time.time() - startTime > self.config['Gaze tracking']['max_wait_time']:
 				fixated = False
-				print('yo done!')
 
 		self.fixationStim.autoDraw = False
 		return fixated
