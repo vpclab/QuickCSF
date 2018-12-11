@@ -260,13 +260,13 @@ class PeripheralCSFTester():
 		time.sleep(1)
 
 	def showMessage(self, msg, exceptionOnEsc=True):
-		instructionsStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
-		instructionsStim.draw()
-		self.flipBuffer()
-
 		keepWaiting = True
 
 		while keepWaiting:
+			instructionsStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
+			instructionsStim.draw()
+			self.flipBuffer()
+			
 			keys = event.waitKeys()
 			if 'c' in keys and self.gazeTracker is not None:
 				self.doCalibration()
