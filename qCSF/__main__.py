@@ -79,7 +79,9 @@ class PeripheralCSFTester():
 		self.mon.setSizePix(resolution)
 		self.mon.save()
 
-		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution, color=self.config['Display settings']['background_color'])
+		self.win = visual.Window(fullscr=True, monitor='testMonitor', allowGUI=False, units='deg', size=resolution, color=-1)
+		self.background = visual.Rect(self.win, size=[dim*2 for dim in resolution], units='pix', color=self.config['Display settings']['background_color'])
+		self.flipBuffer()
 
 		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['Stimuli settings']['stimulus_size'], mask='gauss')
 		fixationVertices = (
@@ -209,6 +211,10 @@ class PeripheralCSFTester():
 			stim, pos, labelText = hudArgs
 			stim.autoDraw = False
 
+	def flipBuffer(self):
+		self.win.flip()
+		self.background.draw()
+
 	def setupDataFile(self):
 		self.dataFilename = self.config['General settings']['data_filename'].format(**self.config['General settings']) + '.csv'
 		logging.info(f'Starting data file {self.dataFilename}')
@@ -248,21 +254,30 @@ class PeripheralCSFTester():
 
 		return qcsf.QCSF(stimulusSpace, parameterSpace)
 
-	def showMessage(self, msg):
+	def doCalibration(self):
+		self.showMessage('Looks like you need to be re-calibrated!\nFollow the circle around the next screen.\nPress SPACE to begin.')
+		self.gazeTracker.doCalibration()
+		time.sleep(1)
+
+	def showMessage(self, msg, exceptionOnEsc=True):
 		instructionsStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
 		instructionsStim.draw()
+		self.flipBuffer()
 
-		self.win.flip()
 		keepWaiting = True
+
 		while keepWaiting:
 			keys = event.waitKeys()
 			if 'c' in keys and self.gazeTracker is not None:
-				self.gazeTracker.doCalibration()
+				self.doCalibration()
 			else:
 				keepWaiting = False
 
 			if 'escape' in keys:
-				raise UserExit()
+				if exceptionOnEsc:
+					raise UserExit()
+				else:
+					keepWaiting = False
 
 	def showInstructions(self, firstTime=False):
 		key1 = self.config['Input settings']['first_stimulus_key_label']
@@ -391,7 +406,7 @@ class PeripheralCSFTester():
 			# Run each trial in this block
 			self.enableHUD()
 			for trialCounter,trial in enumerate(block['trials']):
-				self.win.flip()
+				self.flipBuffer()
 
 				time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between trials
 				self.runTrial(trial, self.stepHandlers[trial.eccentricity][trial.orientation])
@@ -463,10 +478,13 @@ class PeripheralCSFTester():
 
 		logging.info(f'Correct stimulus = {whichStim+1}')
 
-		retries = 0
+		retries = -1
 		needToRetry = True
-		while retries <= self.config['Gaze tracking']['retries'] and needToRetry:
+		while retries < self.config['Gaze tracking']['retries'] and needToRetry:
 			retries += 1
+			if retries > 1 and (retries % self.config['Gaze tracking']['retries_to_trigger_calibration']) == 0 and self.gazeTracker is not None:
+				self.doCalibration()
+
 			if self.config['Input settings']['wait_for_ready_key']:
 				self.drawAnnuli(trial.eccentricity)
 				self.waitForReadyKey()
@@ -477,7 +495,7 @@ class PeripheralCSFTester():
 				self.fixationStim.draw()
 
 			self.drawAnnuli(trial.eccentricity)
-			self.win.flip()
+			self.flipBuffer()
 			time.sleep(.5)
 			if self.config['Gaze tracking']['wait_for_fixation']:
 				if not self.waitForFixation():
@@ -518,13 +536,13 @@ class PeripheralCSFTester():
 				self.drawFixationAid()
 
 				self.drawAnnuli(trial.eccentricity)
-				self.win.flip()          # show the stimulus
+				self.flipBuffer()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
 				self.applyMasks(trial.eccentricity)
 				self.drawFixationAid()
 				self.drawAnnuli(trial.eccentricity)
-				self.win.flip()          # hide the stimulus
+				self.flipBuffer()          # hide the stimulus
 
 				interStimulusTime = self.config['Stimuli settings']['time_between_stimuli'] / 1000.0
 				if i < 1:
@@ -536,7 +554,7 @@ class PeripheralCSFTester():
 				self.fixationStim.draw()
 
 			self.drawAnnuli(trial.eccentricity)
-			self.win.flip()
+			self.flipBuffer()
 
 			if not needToRetry:
 				correct = self.checkResponse(whichStim)
@@ -552,10 +570,10 @@ class PeripheralCSFTester():
 					self.updateHUD('lastOk', '✘', (1, -1, -1))
 					self.config['negativeFeedback'].play()
 
-		if retries > self.config['Gaze tracking']['retries']:
+		if retries >= self.config['Gaze tracking']['retries']:
 			raise Exception('Max retries exceeded!')
 
-		self.win.flip()
+		self.flipBuffer()
 		logLine = f'E={trial.eccentricity},O={trial.orientation},C={contrast},F={frequency},Correct={correct}'
 		logging.info(f'Response: {logLine}')
 		stepHandler.markResponse(correct)
@@ -576,7 +594,7 @@ class PeripheralCSFTester():
 
 			self.drawFixationAid()
 			self.drawAnnuli(eccentricity)
-			self.win.flip()
+			self.flipBuffer()
 			time.sleep(self.config['Stimuli settings']['mask_time']/1000)
 
 	def drawFixationAid(self):
@@ -610,33 +628,34 @@ class PeripheralCSFTester():
 		while fixated is None:
 			currentTime = time.time()
 			pos = self.getGazePosition()
-			self.gazeMarker.pos = pos
-			if self.confi['Gaze tracking']['show_gaze']:
-				self.gazeMarker.draw()
-			self.win.flip()
+			if pos is not None:
+				self.gazeMarker.pos = pos
+				if self.confi['Gaze tracking']['show_gaze']:
+					self.gazeMarker.draw()
+				self.flipBuffer()
 
-			distance = math.sqrt((target[0]-pos[0])**2 + (target[1]-pos[1])**2)
-			if distance < self.config['Gaze tracking']['gaze_offset_max']:
-				if fixationStartTime is None:
-					fixationStartTime = currentTime
-				elif currentTime - fixationStartTime > self.config['Gaze tracking']['fixation_period']:
-					fixated = True
-			else:
-				fixationStartTime = None
+				distance = math.sqrt((target[0]-pos[0])**2 + (target[1]-pos[1])**2)
+				if distance < self.config['Gaze tracking']['gaze_offset_max']:
+					if fixationStartTime is None:
+						fixationStartTime = currentTime
+					elif currentTime - fixationStartTime > self.config['Gaze tracking']['fixation_period']:
+						fixated = True
+				else:
+					fixationStartTime = None
 
 			if time.time() - startTime > self.config['Gaze tracking']['max_wait_time']:
 				fixated = False
+				print('yo done!')
 
 		self.fixationStim.autoDraw = False
 		return fixated
 
 	def getGazePosition(self):
-		pos = None
-		while pos is None:
-			time.sleep(0.1)
-			pos = self.gazeTracker.getPosition()
-
-		return PyPupilGazeTracker.PsychoPyVisuals.screenToMonitorCenterDeg(self.mon, pos)
+		pos = self.gazeTracker.getPosition()
+		if pos is None:
+			return
+		else:
+			return PyPupilGazeTracker.PsychoPyVisuals.screenToMonitorCenterDeg(self.mon, pos)
 
 	def start(self):
 		exitCode = 0
@@ -653,13 +672,13 @@ class PeripheralCSFTester():
 			print('Exception: %s' % exc)
 			traceback.print_exc()
 			logging.critical(exc)
-			self.showMessage('Something went wrong!\n\nPlease let the research assistant know.')
+			self.showMessage('Something went wrong!\n\nPlease let the research assistant know.\n\n%s' % exc, exceptionOnEsc=False)
 
 		if self.gazeTracker is not None:
 			self.gazeTracker.stop()
 
 		self.fixationStim.autoDraw = False
-		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.')
+		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.', exceptionOnEsc=False)
 
 		self.win.close()
 		core.quit(exitCode)

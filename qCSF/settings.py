@@ -13,13 +13,14 @@ SETTINGS_GROUP = [
 		Setting('Separate blocks by',   str, 'Orientations', allowedValues=['Orientations', 'Eccentricities'])
 
 	), ConfigGroup('Gaze tracking',
-		Setting('Wait for fixation',           bool,      False),
-		Setting('Max wait time (s)',           int,       10,   helpText='In seconds'),
-		Setting('Gaze offset max (degrees)',   float,     1.5,  helpText='In degrees'),
-		Setting('Fixation period (seconds)',   float,     0.3,  helpText='In seconds'),
-		Setting('Render at gaze',              bool,      False),
-		Setting('Retries',                     int,       3),
-		Setting('Show gaze',                   bool,      False),
+		Setting('Wait for fixation',              bool,  False),
+		Setting('Max wait time (s)',              int,   10,   helpText='In seconds'),
+		Setting('Gaze offset max (degrees)',      float, 1.5,  helpText='In degrees'),
+		Setting('Fixation period (seconds)',      float, 0.3,  helpText='In seconds'),
+		Setting('Render at gaze',                 bool,  False),
+		Setting('Retries',                        int,   4),
+		Setting('Retries to trigger calibration', int,   2),
+		Setting('Show gaze',                      bool,  False),
 
 	), ConfigGroup('Display settings',
 		Setting('Monitor distance',   int,  57,        helpText='In cm'),
