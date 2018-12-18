@@ -9,6 +9,7 @@ from functools import partial
 from collections import OrderedDict
 
 import monitorTools
+from MonitorShutter import ShutterController
 import qcsf, settings, assets
 
 import psychopy
@@ -152,8 +153,10 @@ class PeripheralCSFTester():
 			)
 			self.gazeTracker.start()
 			self.gazeMarker = PyPupilGazeTracker.PsychoPyVisuals.FixationStim(self.win, size=self.config['Gaze tracking']['gaze_offset_max'], units='deg', autoDraw=False)
+			self.cobreCommander = self.gazeTracker.cobreCommander
 		else:
 			self.gazeTracker = None
+			self.cobreCommander = ShutterController()
 
 	def setTopLeftPos(self, stim, pos):
 		# convert pixels to degrees
@@ -255,7 +258,7 @@ class PeripheralCSFTester():
 		return qcsf.QCSF(stimulusSpace, parameterSpace)
 
 	def doCalibration(self):
-		self.gazeTracker.cobreCommander.openShutter()
+		self.cobreCommander.openShutter()
 		self.showMessage('Looks like you need to be re-calibrated!\nFollow the circle around the next screen.\nPress SPACE to begin.')
 		self.gazeTracker.doCalibration(shutterCloseAfterCalibration=True)
 		time.sleep(1)
@@ -264,7 +267,8 @@ class PeripheralCSFTester():
 		keepWaiting = True
 
 		while keepWaiting:
-			self.getGazePosition() # throw this away
+			if self.gazeTracker is not None:
+				self.getGazePosition() # throw this value away, we just need to keep the gaze tracker pumping messages
 
 			instructionsStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
 			instructionsStim.draw()
@@ -620,7 +624,7 @@ class PeripheralCSFTester():
 
 	def waitForReadyKey(self):
 		self.showMessage('Ready?')
-		self.gazeTracker.cobreCommander.closeShutter()
+		self.cobreCommander.closeShutter()
 
 	def waitForFixation(self, target=[0,0]):
 		logging.info(f'Waiting for fixation...')
