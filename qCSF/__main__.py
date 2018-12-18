@@ -151,12 +151,14 @@ class PeripheralCSFTester():
 				smoother=PyPupilGazeTracker.smoothing.SimpleDecay(),
 				screenSize=resolution
 			)
-			self.gazeTracker.start()
+			self.gazeTracker.start(closeShutter=False)
 			self.gazeMarker = PyPupilGazeTracker.PsychoPyVisuals.FixationStim(self.win, size=self.config['Gaze tracking']['gaze_offset_max'], units='deg', autoDraw=False)
 			self.cobreCommander = self.gazeTracker.cobreCommander
 		else:
 			self.gazeTracker = None
 			self.cobreCommander = ShutterController()
+
+		self.trial = None
 
 	def setTopLeftPos(self, stim, pos):
 		# convert pixels to degrees
@@ -303,6 +305,7 @@ class PeripheralCSFTester():
 			instructions = 'These instructions are the same as before.\n\n' + instructions
 
 		self.showMessage(instructions)
+		self.cobreCommander.closeShutter()
 
 	def takeABreak(self, waitForKey=True):
 		self.showMessage('Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [SPACEBAR].')
@@ -451,6 +454,7 @@ class PeripheralCSFTester():
 			return True
 
 	def runTrial(self, trial, stepHandler):
+		self.trial = trial
 		stimParams = stepHandler.next()[0]
 		# These parameters are indices - not real values. They must be mapped
 		stimParams = qcsf.mapStimParams(numpy.array([stimParams]), True)
@@ -495,7 +499,6 @@ class PeripheralCSFTester():
 				self.doCalibration()
 
 			if self.config['Input settings']['wait_for_ready_key']:
-				self.drawAnnuli(trial.eccentricity)
 				self.waitForReadyKey()
 
 			if self.config['Display settings']['show_fixation_aid']:
@@ -506,31 +509,42 @@ class PeripheralCSFTester():
 			self.drawAnnuli(trial.eccentricity)
 			self.flipBuffer()
 			time.sleep(.5)
+
+			needToRetry = False
+
 			if self.config['Gaze tracking']['wait_for_fixation']:
 				if not self.waitForFixation():
 					needToRetry = True
 					self.config['gazeTone'].play()
 					continue
 
-			needToRetry = False
-
 			for i in range(2):
-				if self.config['Gaze tracking']['wait_for_fixation']:
+				if i == 1 and self.config['Gaze tracking']['wait_for_fixation']:
+					# are they still fixated?
 					gazePos = self.getGazePosition()
-					gazeAngle = math.sqrt(gazePos[0]**2 + gazePos[1]**2)
+					if gazePos is not None:
+						gazeAngle = math.sqrt(gazePos[0]**2 + gazePos[1]**2)
 
-					logging.info(f'Gaze pos: {gazePos}')
-					logging.info(f'Gaze angle: {gazeAngle}')
-					if gazeAngle > self.config['Gaze tracking']['gaze_offset_max']:
+						logging.info(f'Gaze pos: {gazePos}')
+						logging.info(f'Gaze angle: {gazeAngle}')
+						if gazeAngle > self.config['Gaze tracking']['gaze_offset_max']:
+							self.config['gazeTone'].play()
+							logging.info('Participant looked away!')
+							needToRetry = True
+							break
+					else:
 						self.config['gazeTone'].play()
 						logging.info('Participant looked away!')
 						needToRetry = True
-						continue
+						break
 
 				if whichStim == i:
 					self.stim.contrast = contrast
 					if self.config['Gaze tracking']['render_at_gaze']:
-						gazePos = self.getGazePosition()
+						gazePos = None
+						while gazePos is None:
+							gazePos = self.getGazePosition()
+
 						logging.info(f'Gaze pos: {gazePos}')
 						self.stim.pos = [
 							self.stim.pos[0] + gazePos[0],
@@ -624,7 +638,6 @@ class PeripheralCSFTester():
 
 	def waitForReadyKey(self):
 		self.showMessage('Ready?')
-		self.cobreCommander.closeShutter()
 
 	def waitForFixation(self, target=[0,0]):
 		logging.info(f'Waiting for fixation...')
@@ -632,7 +645,6 @@ class PeripheralCSFTester():
 		startTime = time.time()
 		fixationStartTime = None
 
-		self.fixationStim.autoDraw = True
 		fixated = None
 
 		while fixated is None:
@@ -640,8 +652,11 @@ class PeripheralCSFTester():
 			pos = self.getGazePosition()
 			if pos is not None:
 				self.gazeMarker.pos = pos
-				if self.confi['Gaze tracking']['show_gaze']:
+				if self.config['Gaze tracking']['show_gaze']:
 					self.gazeMarker.draw()
+
+				self.drawFixationAid()
+				self.drawAnnuli(eccentricity=self.trial.eccentricity)
 				self.flipBuffer()
 
 				distance = math.sqrt((target[0]-pos[0])**2 + (target[1]-pos[1])**2)
@@ -656,7 +671,7 @@ class PeripheralCSFTester():
 			if time.time() - startTime > self.config['Gaze tracking']['max_wait_time']:
 				fixated = False
 
-		self.fixationStim.autoDraw = False
+		#self.fixationStim.autoDraw = False
 		return fixated
 
 	def getGazePosition(self):
