@@ -701,6 +701,8 @@ class PeripheralCSFTester():
 		if self.gazeTracker is not None:
 			self.gazeTracker.stop()
 
+		self.cobreCommander.openShutter()
+
 		self.fixationStim.autoDraw = False
 		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.', exceptionOnEsc=False)
 
