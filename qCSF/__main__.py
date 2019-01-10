@@ -267,6 +267,7 @@ class PeripheralCSFTester():
 	def showMessage(self, msg, exceptionOnEsc=True):
 		keepWaiting = True
 
+		event.clearEvents()
 		while keepWaiting:
 			if self.gazeTracker is not None:
 				self.getGazePosition() # throw this value away, we just need to keep the gaze tracker pumping messages
