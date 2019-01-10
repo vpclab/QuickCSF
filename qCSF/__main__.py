@@ -153,11 +153,10 @@ class PeripheralCSFTester():
 			)
 			self.gazeTracker.start(closeShutter=False)
 			self.gazeMarker = PyPupilGazeTracker.PsychoPyVisuals.FixationStim(self.win, size=self.config['Gaze tracking']['gaze_offset_max'], units='deg', autoDraw=False)
-			self.cobreCommander = self.gazeTracker.cobreCommander
 		else:
 			self.gazeTracker = None
-			self.cobreCommander = ShutterController()
 
+		self.cobreCommander = ShutterController()
 		self.trial = None
 
 	def setTopLeftPos(self, stim, pos):
@@ -700,8 +699,9 @@ class PeripheralCSFTester():
 
 		if self.gazeTracker is not None:
 			self.gazeTracker.stop()
-
-		self.cobreCommander.openShutter()
+		else:
+			self.cobreCommander.openShutter()
+			self.cobreCommander.disconnectFromhost()
 
 		self.fixationStim.autoDraw = False
 		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.', exceptionOnEsc=False)
