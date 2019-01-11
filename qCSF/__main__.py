@@ -117,7 +117,7 @@ class PeripheralCSFTester():
 						visual.Circle(
 							self.win,
 							pos=pos,
-							radius = .7 * monitorTools.scaleSizeByEccentricity(self.config['Stimuli settings']['stimulus_size'], eccentricity),
+							radius = .5 * monitorTools.scaleSizeByEccentricity(self.config['Stimuli settings']['stimulus_size'], eccentricity),
 							lineColor = self.config['Display settings']['annuli_color'],
 							fillColor = None,
 							units = 'deg'
