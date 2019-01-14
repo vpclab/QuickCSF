@@ -282,14 +282,14 @@ class PeripheralCSFTester():
 
 		time.sleep(1)
 
-	def showMessage(self, msg, exceptionOnEsc=True, showGaze=True):
+	def showMessage(self, msg, exceptionOnEsc=True):
 		keepWaiting = True
 		firstRender = True
 
 		messageStim = visual.TextStim(self.win, text=msg, color=-1, wrapWidth=40)
 
 		while keepWaiting:
-			if showGaze and self.gazeTracker is not None:
+			if self.config['Gaze tracking']['show_gaze'] and self.gazeTracker is not None:
 				pos = self.getGazePosition()
 				if pos is not None:
 					self.gazeMarker.pos = pos
@@ -301,7 +301,7 @@ class PeripheralCSFTester():
 
 			if firstRender:
 				firstRender = False
-				time.sleep(1)
+				time.sleep(.25)
 				event.clearEvents()
 			else:
 				keys = event.getKeys()
@@ -309,6 +309,7 @@ class PeripheralCSFTester():
 				if keyPressed:
 					if 'c' in keys and self.gazeTracker is not None:
 						self.doCalibration(withValidation=True)
+
 					if 'g' in keys:
 						self.config['Gaze tracking']['show_gaze'] = not self.config['Gaze tracking']['show_gaze']
 
@@ -335,7 +336,7 @@ class PeripheralCSFTester():
 		if not firstTime:
 			instructions = 'These instructions are the same as before.\n\n' + instructions
 
-		self.showMessage(instructions, showGaze=False)
+		self.showMessage(instructions)
 		self.cobreCommander.closeShutter()
 
 	def takeABreak(self, waitForKey=True):
