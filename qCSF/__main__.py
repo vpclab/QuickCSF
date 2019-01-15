@@ -314,6 +314,9 @@ class PeripheralCSFTester():
 					if 'g' in keys:
 						self.config['Gaze tracking']['show_gaze'] = not self.config['Gaze tracking']['show_gaze']
 
+					if 'm' in keys:
+						self.win.winHandle.minimize()
+
 					if 'space' in keys:
 						keepWaiting = False
 
