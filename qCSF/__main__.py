@@ -182,12 +182,12 @@ class PeripheralCSFTester():
 		yOffset = 10
 
 		self.hudElements = OrderedDict(
-			lastStim = [visual.TextStim(self.win, text=' '), [xOffset, 0 + yOffset], 'Last stim'],
+			lastStim = [visual.TextStim(self.win, text=' '), [xOffset-150, 0 + yOffset], 'Last stim'],
 			lastResp = [visual.TextStim(self.win, text=' '), [xOffset + 40, 6*lineHeight + yOffset], None],
 			lastOk = [visual.TextStim(self.win, text=' '), [xOffset -10, 6*lineHeight + yOffset], 'Last resp'],
-			thisStim = [visual.TextStim(self.win, text=' '), [xOffset, 8*lineHeight + yOffset], 'This stim'],
+			thisStim = [visual.TextStim(self.win, text=' '), [xOffset-150, 8*lineHeight + yOffset], 'This stim'],
 			expectedResp = [visual.TextStim(self.win, text=' '), [xOffset, 14*lineHeight + yOffset], 'Exp resp'],
-			progress = [visual.TextStim(self.win, text=' '), [xOffset, 18*lineHeight + yOffset], 'Progress'],
+			progress = [visual.TextStim(self.win, text=' '), [xOffset-150, 20*lineHeight + yOffset], 'Progress'],
 		)
 
 		for key in list(self.hudElements):
@@ -331,7 +331,7 @@ class PeripheralCSFTester():
 		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
 		instructions += 'If the stimulus appeared during the FIRST tone, press [' + key1.upper() + '].\n'
 		instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
-		instructions += 'During the process, keep your gaze fixated on the small cross at the center of the screen.\n\n'
+		instructions += 'During the process, keep your gaze fixated on the circled-dot at the center of the screen.\n\n'
 		instructions += 'If you are uncertain, make a guess.\n\n\nPress [SPACEBAR] to start.'
 
 		if not firstTime:
@@ -455,7 +455,7 @@ class PeripheralCSFTester():
 
 				time.sleep(self.config['Stimuli settings']['time_between_stimuli'] / 1000.0)     # pause between trials
 
-				self.updateHUD('progress', f'B({blockCounter+1}/{len(self.blocks)}) T({trialCounter+1}/{len(block["trials"])})')
+				self.updateHUD('progress', f'\nB({blockCounter+1}/{len(self.blocks)})\nT({trialCounter+1}/{len(block["trials"])})')
 				self.runTrial(trial, self.stepHandlers[trial.eccentricity][trial.orientation])
 				if self.config['General settings']['practice']:
 					if sum(self.history) >= self.config['General settings']['practice_streak']:
