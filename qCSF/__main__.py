@@ -660,7 +660,6 @@ class PeripheralCSFTester():
 
 	def drawFixationAid(self):
 		if self.config['Display settings']['show_fixation_aid']:
-			print('Fixation aid: ', self.fixationAid)
 			[_.draw() for _ in self.fixationAid]
 
 	def drawAnnuli(self, eccentricity=None):
