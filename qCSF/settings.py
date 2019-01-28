@@ -18,7 +18,7 @@ SETTINGS_GROUP = [
 		Setting('Gaze offset max (degrees)',      float, 1.5,  helpText='In degrees'),
 		Setting('Fixation period (seconds)',      float, 0.3,  helpText='In seconds'),
 		Setting('Render at gaze',                 bool,  False),
-		Setting('Retries',                        int,   9),
+		Setting('Retries',                        int,   30),
 		Setting('Retries to trigger calibration', int,   3),
 		Setting('Show gaze',                      bool,  False),
 
