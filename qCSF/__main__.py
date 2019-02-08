@@ -739,7 +739,7 @@ class PeripheralCSFTester():
 			self.gazeTracker.stop()
 		else:
 			self.cobreCommander.openShutter()
-			self.cobreCommander.disconnectFromhost()
+			self.cobreCommander.disconnectFromHost()
 
 		self.fixationStim.autoDraw = False
 		self.showMessage('Good job - you are finished with this part of the study!\n\nPress the [SPACEBAR] to exit.', exceptionOnEsc=False)
