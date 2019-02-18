@@ -97,7 +97,7 @@ class PeripheralCSFTester():
 				lineColor = self.config['Display settings']['fixation_color'],
 				fillColor = None,
 			), visual.Circle(self.win,
-				radius = self.config['Gaze tracking']['gaze_offset_max'] * .1,
+				radius = self.config['Gaze tracking']['gaze_offset_max'] * .05,
 				lineColor = None,
 				fillColor = self.config['Display settings']['fixation_color'],
 			)
