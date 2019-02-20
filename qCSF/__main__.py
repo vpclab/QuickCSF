@@ -330,11 +330,11 @@ class PeripheralCSFTester():
 		key1 = self.config['Input settings']['first_stimulus_key_label']
 		key2 = self.config['Input settings']['second_stimulus_key_label']
 
-		instructions = 'In this experiment, you will be presented with two options - one will be blank, and the other will be a stimulus.\n\n'
-		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the stimulus.\n\n'
-		instructions += 'If the stimulus appeared during the FIRST tone, press [' + key1.upper() + '].\n'
-		instructions += 'If the stimulus appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
-		instructions += 'During the process, keep your gaze fixated on the circled-dot at the center of the screen.\n\n'
+		instructions = 'For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n'
+		instructions += 'A tone will play when each option is displayed. After both tones, you will need to select which option contained the striped circle.\n\n'
+		instructions += 'If the striped circle appeared during the FIRST tone, press [' + key1.upper() + '].\n'
+		instructions += 'If the striped circle appeared during the SECOND tone, press [' + key2.upper() + '].\n\n'
+		instructions += 'Throughout the test, keep your gaze fixated on the circled-dot at the center of the screen.\n\n'
 		instructions += 'If you are uncertain, make a guess.\n\n\nPress [SPACEBAR] to start.'
 
 		if not firstTime:
