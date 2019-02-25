@@ -142,6 +142,7 @@ class PeripheralCSFTester():
 							image=maskImagePath,
 							pos=pos,
 							size=monitorTools.scaleSizeByEccentricity(size, eccentricity),
+							mask='gauss',
 						)
 					)
 
@@ -593,14 +594,14 @@ class PeripheralCSFTester():
 					self.stim.opacity = 0
 
 				self.config['sitmulusTone'].play() # play the tone
-				self.stim.draw()
 				self.drawFixationAid()
-
 				self.drawAnnuli(trial.eccentricity)
+				self.stim.draw()
 				self.flipBuffer()          # show the stimulus
 
 				time.sleep(self.config['Stimuli settings']['stimulus_duration'] / 1000.0)
 				self.applyMasks(trial.eccentricity)
+
 				self.drawFixationAid()
 				self.drawAnnuli(trial.eccentricity)
 				self.flipBuffer()          # hide the stimulus
@@ -644,6 +645,9 @@ class PeripheralCSFTester():
 
 	def applyMasks(self, eccentricity=None):
 		if self.config['Stimuli settings']['mask_time'] > 0:
+			self.drawFixationAid()
+			self.drawAnnuli(eccentricity)
+
 			if eccentricity is None:
 				eccentricities = self.annuli.keys()
 			else:
@@ -653,8 +657,6 @@ class PeripheralCSFTester():
 				for mask in self.masks[ecc]:
 					mask.draw()
 
-			self.drawFixationAid()
-			self.drawAnnuli(eccentricity)
 			self.flipBuffer()
 			time.sleep(self.config['Stimuli settings']['mask_time']/1000)
 
