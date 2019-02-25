@@ -84,7 +84,7 @@ class PeripheralCSFTester():
 		self.background = visual.Rect(self.win, size=[dim*2 for dim in resolution], units='pix', color=self.config['Display settings']['background_color'])
 		self.flipBuffer()
 
-		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['Stimuli settings']['stimulus_size'], mask='gauss')
+		self.stim = visual.GratingStim(self.win, contrast=1, sf=6, size=self.config['Stimuli settings']['stimulus_size'], mask='gauss', phase=.25)
 		fixationVertices = (
 			(0, -0.5), (0, 0.5),
 			(0, 0),
