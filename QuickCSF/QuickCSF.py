@@ -3,15 +3,31 @@ import logging
 import time
 import math
 
-def mapStimParams(params, exponify=False):
-	sensitivity = 0.1*params[:,0]
-	frequency = -0.7 + 0.1*params[:,1]
+def makeContrastSpace(min=.01, max=1, count=24):
+	sensitivityRange = [1/min, 1/max]
 
-	if exponify:
-		sensitivity = numpy.power(10, sensitivity)
-		frequency = numpy.power(10, frequency)
+	expRange = numpy.log10(sensitivityRange[0])-numpy.log10(sensitivityRange[1])
+	expMin = numpy.log10(sensitivityRange[1])
 
-	return numpy.stack((sensitivity, frequency))
+	contrastSpace = numpy.array([0.] * count)
+	for i in range(count):
+		contrastSpace[count-i-1] = 1.0 / (
+			10**((i/(count-1.))*expRange + expMin)
+		)
+
+	return contrastSpace
+
+def makeFrequencySpace(min=.2, max=36, count=20):
+	expRange = numpy.log10(max)-numpy.log10(min)
+	expMin = numpy.log10(min)
+
+	frequencySpace = numpy.array([0.] * count)
+	for i in range(count):
+		frequencySpace[i] = (
+			10** ( (i/(count-1)) * expRange + expMin )
+		)
+
+	return frequencySpace
 
 
 def mapCSFParams(params, exponify=False):
@@ -45,6 +61,12 @@ def entropy(p):
 
 class QuickCSFEstimator():
 	def __init__(self, stimulusSpace, parameterSpace):
+		'''
+			stimulusSpace: numpy.array([
+				contrastSpace,   # in % contrast
+				frequencySpace   # in cycles per degree
+			])
+		'''
 		self.stimulusSpace = stimulusSpace
 		self.parameterSpace = parameterSpace
 
@@ -95,7 +117,10 @@ class QuickCSFEstimator():
 		self.currentStimulusIndex = numpy.array([[sortMap[randIndex]]])
 		self.currentStimParamIndices = self.inflateStimulusIndex(self.currentStimulusIndex)
 
-		return self.currentStimParamIndices
+		return numpy.array([[
+			self.stimulusSpace[0][self.currentStimParamIndices[0][0]],
+			self.stimulusSpace[1][self.currentStimParamIndices[0][1]]
+		]])
 
 	def _inflate(self, index, ranges):
 		dimensions = len(ranges)
@@ -131,75 +156,61 @@ class QuickCSFEstimator():
 		# Unroll into separate rows
 		stimulusIndices = self.inflateStimulusIndex(stimulusIndex)
 
-		# Some kind of special-case optimization... ?
-		if stimulusIndices.shape[1] == self.stimComboCount:
-			frequencies = numpy.arange(self.stimulusRanges[1])[numpy.newaxis]
-			csfValues = self.csf(parameters, frequencies)
+		frequencies = self.stimulusSpace[1][stimulusIndices[:,1]].reshape(1,-1)
+		csfValues = self.csf(parameters, frequencies)
 
-			a = numpy.ones(self.stimulusRanges[0])[:,numpy.newaxis]
-			b = numpy.arange(self.stimulusRanges[1])[numpy.newaxis,:]
+		# Make vector of sensitivities
+		contrast = self.stimulusSpace[0][stimulusIndices[:,0]]
 
-			csfValues = csfValues[:, (a*b).astype(int)]
-			csfValues = csfValues.reshape(
-				csfValues.shape[0],
-				csfValues.shape[1]*csfValues.shape[2]
-			)
-		else:
-			csfValues = self.csf(parameters, stimulusIndices[:,1].reshape(1,-1))
-
-		sensitivity = 0.1 * stimulusIndices[:,0]
-		sensitivity = numpy.ones((parameters.shape[0], 1)) * sensitivity
+		sensitivity = numpy.log10(
+			numpy.ones((parameters.shape[0], 1)) * numpy.divide(1, contrast)
+		)
 
 		return 1 - numpy.divide(self.d, 1+numpy.exp((csfValues-sensitivity) / self.sig))
 
-	def csf(self, parameters, freqNum):
+	def csf(self, parameters, frequency):
 		'''
 			The parametric contrast-sensitivity function
 			Param order = peak sensitivity, peak frequency, bandwidth, log delta
 			@TODO: move this out of the class
 			Expects UNMAPPED parameters and frequencyNum
 		'''
+		# Get everything into log-units
 		[peakSensitivity, peakFrequency, logBandwidth, delta] = mapCSFParams(parameters)
+		frequency = numpy.log10(frequency)
 	
-		freq = -0.7 + 0.1*freqNum
-
 		n = len(peakSensitivity)
-		m = len(freqNum[0])
+		m = len(frequency[0])
 
-		freq = freq.repeat(n, 0)
+		frequency = frequency.repeat(n, 0)
+
 		peakFrequency = peakFrequency[:,numpy.newaxis].repeat(m,1)
 		peakSensitivity = peakSensitivity[:,numpy.newaxis].repeat(m,1)
 		delta = delta[:,numpy.newaxis].repeat(m,1)
 		
 		divisor = numpy.log10(2)+logBandwidth
 		divisor = divisor[:,numpy.newaxis].repeat(m,1)
-		tmpVal = (4 * numpy.log10(2) * numpy.power(numpy.divide(freq-peakFrequency, divisor), 2))
+		truncation = (4 * numpy.log10(2) * numpy.power(numpy.divide(frequency-peakFrequency, divisor), 2))
 		
-		sensitivity = numpy.maximum(0, peakSensitivity - tmpVal)
-		Scutoff = numpy.maximum(sensitivity, peakSensitivity-delta)
-		
-		sensitivity[freq<peakFrequency] = Scutoff[freq<peakFrequency]
+		logSensitivity = numpy.maximum(0, peakSensitivity - truncation)
+		Scutoff = numpy.maximum(logSensitivity, peakSensitivity-delta)
+		logSensitivity[frequency<peakFrequency] = Scutoff[frequency<peakFrequency]
 
-		return sensitivity
-
-	def getStimIndex(self, stimValues):
-		for i in range(self.stimComboCount):
-			stimIndicies = self.inflateStimulusIndex(numpy.array([[i]]))
-			searchStimValues = mapStimParams(stimIndicies, True)
-			for j,v in enumerate(searchStimValues):
-				if not math.isclose(v, stimValues[j], abs_tol=.0001):
-					break	# break the j loop, causing the next i to start
-			else:
-				# the j loop did not break, so all values from i were close enough
-				return i
-		else:
-			print('Could not find stim index for', stimValues)
+		return logSensitivity
 
 	def markResponse(self, response, stimIndex=None):
 		if stimIndex is None:
 			stimIndex = self.currentStimulusIndex
-		self.responseHistory.append([stimIndex, response])
+			stimIndices = self.inflateStimulusIndex(stimIndex)
 
+		contrast = self.stimulusSpace[0][stimIndices[:,0]][0]
+		frequency = self.stimulusSpace[1][stimIndices[:,1]][0]
+		self.responseHistory.append([
+			[contrast, frequency],
+			response[0][0]
+		])
+
+		# get probability for this stimulus
 		pm = self._pmeas(
 			numpy.arange(self.paramComboCount)[:,numpy.newaxis],
 			stimIndex
