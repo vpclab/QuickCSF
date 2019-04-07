@@ -1,4 +1,8 @@
-from qtpy import QtCore, QtGui, QtWidgets
+import math, time
+
+import numpy
+
+from qtpy import QtCore, QtGui, QtWidgets, QtMultimedia
 
 INSTRUCTIONS = '''For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n
 A tone will play when each option is displayed. After both tones, you will need to select which option contained the striped circle.\n\n
@@ -20,7 +24,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		self.displayWidget.setStyleSheet(
 			'''
 				background: rgb(127, 127, 127);
-				color: #ccc;
+				color: #bbb;
 				font-size: 32pt;
 			'''
 		)
@@ -33,6 +37,11 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		self.finishedText = 'All done!'
 
 		self.setCentralWidget(self.displayWidget)
+		self.sounds = {
+			'tone': QtMultimedia.QSound('assets/tone.wav'),
+			'good': QtMultimedia.QSound('assets/good.wav'),
+			'bad': QtMultimedia.QSound('assets/bad.wav'),
+		}
 
 	def showInstructions(self):
 		self.displayWidget.setText(self.instructionsText)
@@ -40,21 +49,31 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 	def showReadyPrompt(self):
 		self.displayWidget.setText(self.readyText)
 
+	def showFixationCross(self):
+		self.displayWidget.setText('+')
+
 	def showStimulus(self, stimulus):
-		self.displayWidget.orientation = stimulus.orientation
-		self.displayWidget.setText('-')
+		self.displayWidget.setPixmap(QtGui.QPixmap.fromImage(stimulus))
+		self.sounds['tone'].play()
+
+	def showNonStimulus(self):
+		self.showBlank()
+		self.sounds['tone'].play()
 
 	def showMask(self):
-		self.displayWidget.setText('+')
+		self.displayWidget.setText('')
 
 	def showBlank(self):
 		self.displayWidget.setText('')
+		self.displayWidget.setPixmap(None)
 
 	def giveFeedback(self, good):
 		if good:
 			self.displayWidget.setText('Good!')
+			self.sounds['good'].play()
 		else:
 			self.displayWidget.setText('Wrong')
+			self.sounds['bad'].play()
 
 	def showResponsePrompt(self):
 		self.displayWidget.setText(self.responseText)
@@ -73,10 +92,8 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif event.key() == QtCore.Qt.Key_6:
 			self.participantResponse.emit(False)
 
-
-
 	def onNewState(self, stateName, trial):
-		print('UI received new state', stateName)
+		print(time.time(), 'UI received new state', stateName)
 
 		if stateName == 'INSTRUCTIONS':
 			self.showInstructions()
@@ -84,16 +101,22 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 			self.showBreak()
 		elif stateName == 'WAIT_FOR_READY':
 			self.showReadyPrompt()
-		elif 'INTERSTIMULUS_BLANK' in stateName:
+		elif 'FIXATION' in stateName:
+			self.showFixationCross()
+		elif '_BLANK' in stateName:
 			self.showBlank()
 		elif stateName == 'SHOW_STIMULUS_1':
 			if trial.stimulusOnFirst:
 				self.showStimulus(trial.stimulus)
+			else:
+				self.showNonStimulus()
 		elif stateName == 'SHOW_MASK_1':
 			self.showMask()
 		elif stateName == 'SHOW_STIMULUS_2':
 			if not trial.stimulusOnFirst:
 				self.showStimulus(trial.stimulus)
+			else:
+				self.showNonStimulus()
 		elif stateName == 'SHOW_MASK_2':
 			self.showMask()
 		elif stateName == 'WAIT_FOR_RESPONSE':
@@ -102,3 +125,18 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 			self.giveFeedback(trial.correct)
 		elif stateName == 'FINISHED':
 			self.showFinished()
+
+
+if __name__ == '__main__':
+	import sys
+	app = QtWidgets.QApplication()
+	app.setApplicationName('QuickCSF')
+
+	img = ContrastGaborPatchImage(contrast=1.0, size=100, frequency=.1, orientation=0)
+	window = QtWidgets.QLabel()
+	window.setStyleSheet('background-color: rgb(127, 127, 127)')
+	window.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
+	window.setText('hi')
+	window.setPixmap(QtGui.QPixmap.fromImage(img))
+	window.show()
+	sys.exit(app.exec_())

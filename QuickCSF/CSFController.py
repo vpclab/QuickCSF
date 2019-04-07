@@ -15,13 +15,13 @@ def chunkList(sequence, numberOfChunks):
 	return out
 
 class State:
-	def __init__(self, nextState=None, name=None):
+	def __init__(self, nextStateName=None, name=None):
 		self.name = name
 		self.finished = False
-		self.nextState = nextState
+		self.nextStateName = nextStateName
 	
-	def getNextState(self):
-		return self.nextState
+	def getNextStateName(self):
+		return self.nextStateName
 
 	def start(self):
 		self.finished = False
@@ -36,8 +36,8 @@ class InputState(State):
 	pass
 
 class TimedState(State):
-	def __init__(self, duration, nextState=None):
-		super().__init__(nextState)
+	def __init__(self, duration, nextStateName=None, name=None):
+		super().__init__(nextStateName, name)
 		self.startTime = None
 		self.duration = duration
 
@@ -66,12 +66,14 @@ class Controller_2AFC(QtCore.QObject):
 
 	def __init__(self,
 		stimulusGenerator,
-		trialsPerBlock=25,
+		trialsPerBlock=2,
 		blockCount=4,
+		fixationDuration=.25,
 		stimulusDuration=.1,
 		maskDuration=.1,
 		interStimulusInterval=.1,
-		feedbackDuration=1.0,
+		feedbackDuration=.5,
+		waitForReady=False,
 		parent=None
 	):
 		super().__init__(parent)
@@ -82,7 +84,7 @@ class Controller_2AFC(QtCore.QObject):
 			trialsPerBlock,
 			blockCount
 		)
-		self.stateSpace = self.buildStateSpace(stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration)
+		self.stateSpace = self.buildStateSpace(fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady)
 		self.state = self.stateSpace['INSTRUCTIONS']
 
 	def start(self):
@@ -110,37 +112,47 @@ class Controller_2AFC(QtCore.QObject):
 		random.shuffle(blocks)
 		return blocks
 
-	def buildStateSpace(self, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration):
+	def buildStateSpace(self, fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady):
 		states = {
 			'FINISHED': InputState(),
 		}
 
-		states['FEEDBACK'] = TimedState(feedbackDuration)
-		states['WAIT_FOR_RESPONSE'] = InputState(states['FEEDBACK'])
-		states['INTERSTIMULUS_BLANK_2'] = TimedState(interStimulusInterval, states['WAIT_FOR_RESPONSE'])
-		states['SHOW_MASK_2'] = TimedState(maskDuration, states['INTERSTIMULUS_BLANK_2'])
-		states['SHOW_STIMULUS_2'] = TimedState(stimulusDuration, states['SHOW_MASK_2'])
-		states['INTERSTIMULUS_BLANK_1'] = TimedState(interStimulusInterval, states['SHOW_STIMULUS_2'])
-		states['SHOW_MASK_1'] = TimedState(maskDuration, states['INTERSTIMULUS_BLANK_1'])
-		states['SHOW_STIMULUS_1'] = TimedState(stimulusDuration, states['SHOW_MASK_1'])
-		states['INTERSTIMULUS_BLANK_0'] = TimedState(interStimulusInterval, states['SHOW_STIMULUS_1'])
-		states['WAIT_FOR_READY'] = InputState(states['INTERSTIMULUS_BLANK_0'])
-		states['BREAKING'] = InputState(states['WAIT_FOR_READY'])
-		states['INSTRUCTIONS'] = InputState(states['WAIT_FOR_READY'])
+		if waitForReady:
+			preTrialState = InputState('FIXATION_CROSS', name='WAIT_FOR_READY')
+		else:
+			preTrialState = TimedState(fixationDuration+.5, 'FIXATION_CROSS', name='FIRST_TRIAL_FIXATION')
 
-		for k,v in states.items():
-			v.name = k
+		states['INSTRUCTIONS'] = InputState(preTrialState.name)
+		states['BREAKING'] = InputState(preTrialState.name)
+		states[preTrialState.name] = preTrialState
+
+		states['FIXATION_CROSS'] = TimedState(fixationDuration, 'INTERSTIMULUS_BLANK_0')
+		states['INTERSTIMULUS_BLANK_0'] = TimedState(interStimulusInterval, 'SHOW_STIMULUS_1')
+		states['SHOW_STIMULUS_1'] = TimedState(stimulusDuration, 'SHOW_MASK_1')
+		states['SHOW_MASK_1'] = TimedState(maskDuration, 'INTERSTIMULUS_BLANK_1')
+		states['INTERSTIMULUS_BLANK_1'] = TimedState(interStimulusInterval, 'SHOW_STIMULUS_2')
+		states['SHOW_STIMULUS_2'] = TimedState(stimulusDuration, 'SHOW_MASK_2')
+		states['SHOW_MASK_2'] = TimedState(maskDuration, 'INTERSTIMULUS_BLANK_2')
+		states['INTERSTIMULUS_BLANK_2'] = TimedState(interStimulusInterval, 'WAIT_FOR_RESPONSE')
+		states['WAIT_FOR_RESPONSE'] = InputState('FEEDBACK')
+		states['FEEDBACK'] = TimedState(feedbackDuration)
+
+		for name,state in states.items():
+			state.name = name
 
 		def getFeedbackNextState():
 			if len(self.blocks[0]) == 0:
 				if len(self.blocks) == 1:
-					return states['FINISHED']
+					return 'FINISHED'
 				else:
-					return states['BREAKING']
+					return 'BREAKING'
 			else:
-				return states['WAIT_FOR_READY']
+				if waitForReady:
+					return preTrialState.name
+				else:
+					return preTrialState.name
 
-		states['FEEDBACK'].getNextState = getFeedbackNextState
+		states['FEEDBACK'].getNextStateName = getFeedbackNextState
 
 		return states
 
@@ -167,19 +179,27 @@ class Controller_2AFC(QtCore.QObject):
 
 		self.state.update()
 		if self.state.isFinished():
-			if self.checkState('FEEDBACK'):
-				self.blocks[0].pop(0)
-			elif self.checkState('BREAKING'):
-				self.blocks.pop(0)
-			elif self.checkState('WAIT_FOR_READY'):
-				trial = self.getCurrentTrial()
-				trial.stimulus = self.stimulusGenerator.next()
+			if self.checkState(['INSTRUCTIONS', 'BREAKING']):
+				if len(self.blocks[0]) == 0:
+					self.blocks.pop(0)
 
-			self.state = self.state.getNextState()
-			if self.state == None:
+				trial = self.getCurrentTrial()
+				if trial is not None:
+					trial.stimulus = self.stimulusGenerator.next()
+
+			elif self.checkState('FEEDBACK'):
+				self.blocks[0].pop(0)
+				trial = self.getCurrentTrial()
+				if trial is not None:
+					trial.stimulus = self.stimulusGenerator.next()
+				
+
+			nextStateName = self.state.getNextStateName()
+			if nextStateName is None:
 				self.tick.stop()
 				QtWidgets.QApplication.quit()
 			else:
+				self.state = self.stateSpace[nextStateName]
 				self.state.start()
 				self.stateTransition.emit(self.state.name, self.getCurrentTrial())
 

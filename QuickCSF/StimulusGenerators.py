@@ -1,6 +1,7 @@
 import random
 
 from . import QuickCSF
+from . import gaborPatch
 
 class Stimulus:
 	def __init__(self, contrast, frequency, orientation, size):
@@ -15,7 +16,6 @@ class Stimulus:
 	def __repr__(self):
 		return f'c={self.contrast},f={self.frequency},o={self.orientation},s={self.size}'
 
-
 class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
 	def __init__(self, fixedSize, *params, **kwargs):
 		super().__init__(*params, **kwargs)
@@ -23,11 +23,11 @@ class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
 		self.fixedSize = fixedSize
 
 	def next(self):
-		stim = super().next()
+		stimulus = super().next()
 
-		return Stimulus(
-			stim.contrast,
-			stim.frequency,
-			random.random() * 360,
-			self.fixedSize
+		return gaborPatch.ContrastGaborPatchImage(
+			size=self.fixedSize,
+			contrast=stimulus.contrast,
+			frequency=stimulus.frequency/100,
+			orientation=random.random() * 360,
 		)

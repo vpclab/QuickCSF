@@ -13,7 +13,7 @@ def run():
 
 	window = ui.QuickCSFWindow()
 
-	stimGenerator = StimulusGenerators.RandomOrientationGenerator(100)
+	stimGenerator = StimulusGenerators.RandomOrientationGenerator(256)
 	controller = CSFController.Controller_2AFC(stimGenerator)
 
 	window.participantReady.connect(controller.onParticipantReady)
