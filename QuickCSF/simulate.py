@@ -8,31 +8,19 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
 
-import QuickCSF
-from QuickCSF import QuickCSFEstimator
-
-def mapStimParams(params, exponify=False):
-	sensitivity = 0.1*params[:,0]
-	frequency = -0.7 + 0.1*params[:,1]
-
-	if exponify:
-		sensitivity = numpy.power(10, sensitivity)
-		frequency = numpy.power(10, frequency)
-
-	return numpy.stack((sensitivity, frequency))
+from . import QuickCSF
 
 # Plot the current state
-def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=False):
-	#frequencyDomain = qCSFEstimator.stimulusSpace[1].reshape(-1,1)
+def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 64, 50).reshape(-1,1)
 
 	if unmappedTrueParams is not None:
-		truthData = qCSFEstimator.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
+		truthData = QuickCSF.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
 		truthData = numpy.power(10, truthData)
 		truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
 
 	estimatedParamMeans = qCSFEstimator.getBestParameters(leaveAsIndices=True)
-	estimatedData = qCSFEstimator.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+	estimatedData = QuickCSF.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 	estimatedData = numpy.power(10, estimatedData)
 	estimatedLine, = graph.plot(frequencyDomain, estimatedData, linewidth=2.5)
 	
@@ -40,8 +28,6 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=False):
 	positives = {'f':[], 's':[]}
 	negatives = {'f':[], 's':[]}
 	for record in qCSFEstimator.responseHistory:
-		#stimIndices = qCSFEstimator.inflateStimulusIndex(record[0])
-		#stimValues = mapStimParams(stimIndices, True).T
 		stimValues = record[0]
 		targetArray = positives if record[1] else negatives
 		targetArray['f'].append(stimValues[1])
@@ -65,8 +51,9 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=False):
 	graph.grid()
 
 	if showNumbers:
-		paramEstimates = qCSFEstimator.getBestParameters().tolist()[0]
-		paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(paramEstimates)
+		estimatedParamMeans = QuickCSF.mapCSFParams(estimatedParamMeans, exponify=True)
+		estimatedParamMeans = estimatedParamMeans.reshape(1,-1).tolist()[0]
+		paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(estimatedParamMeans)
 		estimatedLine.set_label(f'Estim: {paramEstimates}')
 
 		if truthData is not None:
@@ -78,7 +65,6 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=False):
 
 	plt.pause(0.001) # necessary for non-blocking graphing
 
-
 def simulateResponse(qCSFEstimator, parameters, stimulusIndex):
 	p = qCSFEstimator._pmeas(parameters, stimulusIndex)
 	return numpy.random.rand() < p
@@ -86,8 +72,6 @@ def simulateResponse(qCSFEstimator, parameters, stimulusIndex):
 
 def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=False, usePerfectResponses=False):
 	numpy.random.seed()
-
-	indexLookupFixed = False
 
 	if saveImages:
 		pathlib.Path('figs').mkdir(parents=True, exist_ok=True) 
@@ -111,7 +95,7 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 	])
 
 	unmappedTrueParams = numpy.array([trueParameters])
-	qcsf = QuickCSFEstimator(stimulusSpace, parameterSpace)
+	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace, parameterSpace)
 
 	fig = plt.figure()
 	graph = fig.add_subplot(1, 1, 1)
@@ -124,14 +108,15 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 	# Trial loop
 	for i in range(iterations):
 		# Get the next stimulus
-		newStimValues = qcsf.next()
+		stimulus = qcsf.next()
+		newStimValues = numpy.array([[stimulus.contrast, stimulus.frequency]])
 		
 		logging.debug('****************** SIMUL RESPON ******************')
 		# Simulate a response
 		if usePerfectResponses:
 			
 			frequency = newStimValues[:,1]
-			trueSens = numpy.power(10, qcsf.csf(unmappedTrueParams, numpy.array([frequency])))
+			trueSens = numpy.power(10, QuickCSF.csf(unmappedTrueParams, numpy.array([frequency])))
 			testContrast = newStimValues[:,0]
 			testSens = 1 / testContrast
 
@@ -144,7 +129,7 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 		# Update the plot
 		graph.clear()
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
-		plot(qcsf, graph, unmappedTrueParams, False)
+		plot(qcsf, graph, unmappedTrueParams)
 
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
