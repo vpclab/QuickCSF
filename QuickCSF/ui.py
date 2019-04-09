@@ -7,7 +7,7 @@ from qtpy import QtCore, QtGui, QtWidgets, QtMultimedia
 
 logger = logging.getLogger(__name__)
 
-INSTRUCTIONS = '''For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n
+DEFAULT_INSTRUCTIONS = '''For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n
 A tone will play when each option is displayed. After both tones, you will need to select which option contained the striped circle.\n\n
 If the striped circle appeared during the FIRST tone, press [ ← LEFT ].\n
 If the striped circle appeared during the SECOND tone, press [ RIGHT → ].\n\n
@@ -18,7 +18,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 	participantReady = QtCore.Signal()
 	participantResponse = QtCore.Signal(object)
 
-	def __init__(self, parent=None):
+	def __init__(self, instructions=None, parent=None):
 		super().__init__(parent)
 		self.displayWidget = QtWidgets.QLabel(self)
 		self.displayWidget.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
@@ -32,7 +32,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 			'''
 		)
 
-		self.instructionsText = INSTRUCTIONS
+		self.instructionsText = instructions if instructions is not None else DEFAULT_INSTRUCTIONS
 		
 		self.breakText = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [ SPACEBAR ].'
 		self.readyText = 'Ready?'

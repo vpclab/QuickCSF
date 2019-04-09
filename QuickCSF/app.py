@@ -47,7 +47,14 @@ def _start(settings):
 	global experimentInfo, mainWindow
 
 	logger.debug('Showing main window')
-	mainWindow = ui.QuickCSFWindow()
+
+	if settings['instructionsFile'] is not None:
+		with open(settings['instructionsFile']) as instructionsFile:
+			instructions = instructionsFile.read()
+	else:
+		instructions = None
+
+	mainWindow = ui.QuickCSFWindow(instructions)
 
 	stimGenerator = StimulusGenerators.RandomOrientationGenerator(**settings['stim'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['controller'])
@@ -71,6 +78,7 @@ def run(settings=None):
 def getSettings():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-sid', '--sessionID', default=None, help='A unique string to identify this observer/session')
+	parser.add_argument('--instructionsFile', default=None, help='A plaintext file containing the instructions')
 
 	parser.add_argument('--controller.trialsPerBlock', type=int, default=25, help='Number of trials in each block')
 	parser.add_argument('--controller.blockCount', type=int, default=4, help='Number of blocks')
