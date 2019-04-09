@@ -19,7 +19,7 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 		truthData = numpy.power(10, truthData)
 		truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
 
-	estimatedParamMeans = qCSFEstimator.getBestParameters(leaveAsIndices=True)
+	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
 	estimatedData = QuickCSF.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 	estimatedData = numpy.power(10, estimatedData)
 	estimatedLine, = graph.plot(frequencyDomain, estimatedData, linewidth=2.5)
@@ -64,11 +64,6 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 		graph.legend()
 
 	plt.pause(0.001) # necessary for non-blocking graphing
-
-def simulateResponse(qCSFEstimator, parameters, stimulusIndex):
-	p = qCSFEstimator._pmeas(parameters, stimulusIndex)
-	return numpy.random.rand() < p
-
 
 def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=False, usePerfectResponses=False):
 	numpy.random.seed()
@@ -122,7 +117,8 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 
 			response = trueSens > testSens
 		else:
-			response = simulateResponse(qcsf, unmappedTrueParams, qcsf.currentStimulusIndex).item(0)
+			p = qcsf._pmeas(unmappedTrueParams)
+			response = numpy.random.rand() < p
 
 		qcsf.markResponse(response)
 		
@@ -140,7 +136,7 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 		print(f'f={record[0][1]},c={record[0][0]},r={record[1]}')
 
 	print('*******')
-	paramEstimates = qcsf.getBestParameters()
+	paramEstimates = qcsf.getResults()
 	trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, True).T
 	print(f'Estimates = {paramEstimates}')
 	print(f'Actuals = {trueParams}')
@@ -151,4 +147,4 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 
 
 if __name__ == '__main__':
-	runSimulation(usePerfectResponses=True)
+	runSimulation(usePerfectResponses=False, iterations=50)

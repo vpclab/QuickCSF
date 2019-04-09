@@ -191,7 +191,7 @@ class QuickCSFEstimator():
 		'''
 		return self._inflate(stimulusIndex, self.stimulusRanges)
 
-	def _pmeas(self, parameterIndex, stimulusIndex):
+	def _pmeas(self, parameterIndex, stimulusIndex=None):
 		# Check if param list is a single-dimension
 		if parameterIndex.shape[1] == 1:
 			# If it's a single dimension, we need to unroll it into 4 separate ones
@@ -200,6 +200,9 @@ class QuickCSFEstimator():
 			parameters = parameterIndex
 
 		# Unroll into separate rows
+		if stimulusIndex is None:
+			stimulusIndex = self.currentStimulusIndex
+
 		stimulusIndices = self.inflateStimulusIndex(stimulusIndex)
 
 		frequencies = self.stimulusSpace[1][stimulusIndices[:,1]].reshape(1,-1)
