@@ -196,12 +196,17 @@ class Controller_2AFC(QtCore.QObject):
 
 			nextStateName = self.state.getNextStateName()
 			if nextStateName is None:
+				self.state = None
 				self.tick.stop()
 				QtWidgets.QApplication.quit()
 			else:
 				self.state = self.stateSpace[nextStateName]
 				self.state.start()
-				self.stateTransition.emit(self.state.name, self.getCurrentTrial())
+
+				if self.state.name == 'FINISHED':
+					self.stateTransition.emit(self.state.name, self.stimulusGenerator.getResults())
+				else:
+					self.stateTransition.emit(self.state.name, self.getCurrentTrial())
 
 	def isFinished(self):
 		return self.checkState('FINISHED')

@@ -81,8 +81,8 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 	def showBreak(self):
 		self.displayWidget.setText(self.breakText)
 
-	def showFinished(self):
-		self.displayWidget.setText(self.finishedText)
+	def showFinished(self, results):
+		self.displayWidget.setText(self.finishedText + '\n\n' + str(results[0]))
 
 	def keyReleaseEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
@@ -92,7 +92,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif event.key() == QtCore.Qt.Key_6:
 			self.participantResponse.emit(False)
 
-	def onNewState(self, stateName, trial):
+	def onNewState(self, stateName, data):
 		print(time.time(), 'UI received new state', stateName)
 
 		if stateName == 'INSTRUCTIONS':
@@ -106,15 +106,15 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif '_BLANK' in stateName:
 			self.showBlank()
 		elif stateName == 'SHOW_STIMULUS_1':
-			if trial.stimulusOnFirst:
-				self.showStimulus(trial.stimulus)
+			if data.stimulusOnFirst:
+				self.showStimulus(data.stimulus)
 			else:
 				self.showNonStimulus()
 		elif stateName == 'SHOW_MASK_1':
 			self.showMask()
 		elif stateName == 'SHOW_STIMULUS_2':
-			if not trial.stimulusOnFirst:
-				self.showStimulus(trial.stimulus)
+			if not data.stimulusOnFirst:
+				self.showStimulus(data.stimulus)
 			else:
 				self.showNonStimulus()
 		elif stateName == 'SHOW_MASK_2':
@@ -122,10 +122,18 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif stateName == 'WAIT_FOR_RESPONSE':
 			self.showResponsePrompt()
 		elif stateName == 'FEEDBACK':
-			self.giveFeedback(trial.correct)
+			self.giveFeedback(data.correct)
 		elif stateName == 'FINISHED':
-			self.showFinished()
+			print('Results: ' + str(data))
+			self.showFinished(data)
 
+
+def getExperimentInfo():
+	(pid,pidOK) = QtWidgets.QInputDialog.getText(None, 'sdf', 'ParticipantID')
+	if pidOK:
+		return {'participantID': pid}
+	else:
+		return None
 
 if __name__ == '__main__':
 	import sys

@@ -92,6 +92,7 @@ def mapCSFParams(params, exponify=False):
 
 def entropy(p):
 	return numpy.multiply(-p, numpy.log(p)) - numpy.multiply(1-p, numpy.log(1-p))
+
 class QuickCSFEstimator():
 	def __init__(self, stimulusSpace=None, parameterSpace=None):
 		'''
@@ -254,7 +255,7 @@ class QuickCSFEstimator():
 
 		return pMarg
 
-	def getBestParameters(self, leaveAsIndices=False):
+	def getResults(self, leaveAsIndices=False):
 		params = numpy.arange(self.paramComboCount).reshape(-1,1)
 		params = self.inflateParameterIndex(params)
 
