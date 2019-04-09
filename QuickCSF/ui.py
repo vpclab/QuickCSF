@@ -132,9 +132,9 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 
 
 def getExperimentInfo():
-	(pid,pidOK) = QtWidgets.QInputDialog.getText(None, 'QuickCSF', 'ParticipantID')
-	if pidOK:
-		return {'participantID': pid}
+	(sid,sidOK) = QtWidgets.QInputDialog.getText(None, 'QuickCSF', 'SessionID')
+	if sidOK:
+		return {'sessionID': sid}
 	else:
 		return None
 

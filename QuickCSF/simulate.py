@@ -1,4 +1,5 @@
 import logging
+import argparse
 import time
 import math
 
@@ -67,16 +68,28 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 
 	plt.pause(0.001) # necessary for non-blocking graphing
 
-def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=False, usePerfectResponses=False):
+def runSimulation(
+	truePeakSensitivity=10,
+	truePeakFrequency=11,
+	trueBandwidth=12,
+	trueDelta=11,
+	minContrast=0.01, maxContrast=1, contrastResolution=24,
+	minFrequency=.2, maxFrequency=36, frequencyResolution=20,
+	trials=30,
+	imagePath=None,
+	usePerfectResponses=False
+):
 	logger.info('Starting simulation')
+
+	trueParameters=[truePeakSensitivity, truePeakFrequency, trueBandwidth, trueBandwidth]
 	numpy.random.seed()
 
-	if saveImages:
-		pathlib.Path('figs').mkdir(parents=True, exist_ok=True) 
+	if imagePath is not None:
+		pathlib.Path(imagePath).mkdir(parents=True, exist_ok=True) 
 
 	stimulusSpace = numpy.array([
-		QuickCSF.makeContrastSpace(),
-		QuickCSF.makeFrequencySpace()
+		QuickCSF.makeContrastSpace(minContrast, maxContrast, contrastResolution),
+		QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
 	])
 
 #		parameterSpace = numpy.array([
@@ -104,7 +117,7 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 	plot(qcsf, graph, unmappedTrueParams)
 
 	# Trial loop
-	for i in range(iterations):
+	for i in range(trials):
 		# Get the next stimulus
 		stimulus = qcsf.next()
 		newStimValues = numpy.array([[stimulus.contrast, stimulus.frequency]])
@@ -130,8 +143,8 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
 		plot(qcsf, graph, unmappedTrueParams)
 
-		if saveImages:
-			plt.savefig('figs/%d.png' % int(time.time()*1000))
+		if imagePath is not None:
+			plt.savefig(pathlib.Path(imagePath+'/%f.png' % time.time()).resolve())
 
 	logger.info('Simulation complete')
 	print('******* History *******')
@@ -157,4 +170,25 @@ if __name__ == '__main__':
 	from . import log
 	log.startLog()
 	
-	runSimulation(usePerfectResponses=False, iterations=50)
+	parser = argparse.ArgumentParser()
+
+	parser.add_argument('-n', '--trials', type=int, default=50, help='Number of trials to simulate')
+	parser.add_argument('--imagePath', default=None, help='Where to save images')
+	parser.add_argument('-perfect', '--usePerfectResponses', default=False, action='store_true', help='Whether to simulate perfect responses, rather than probablistic ones')
+
+	parser.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	parser.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
+	parser.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
+
+	parser.add_argument('-minf', '--minFrequency', type=float, default=0.2, help='The lowest frequency value to measure (cycles per degree)')
+	parser.add_argument('-maxf', '--maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
+	parser.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
+
+	parser.add_argument('-s', '--truePeakSensitivity', type=int, default=10, help='True peak sensitivity')
+	parser.add_argument('-f', '--truePeakFrequency', type=int, default=11, help='True peak frequency')
+	parser.add_argument('-b', '--trueBandwidth', type=int, default=12, help='True bandwidth')
+	parser.add_argument('-d', '--trueDelta', type=int, default=11, help='True delta truncation')
+
+	settings = vars(parser.parse_args())
+
+	runSimulation(**settings)

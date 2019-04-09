@@ -3,13 +3,13 @@ import pathlib
 from datetime import datetime
 
 
-def startLog():
+def startLog(sessionID='NONE'):
 	pathlib.Path('data').mkdir(parents=True, exist_ok=True)
 
 	logger = logging.getLogger('QuickCSF')
 	logger.setLevel(logging.DEBUG)
 	
-	fh = logging.FileHandler(pathlib.Path('data/QuickCSF ' + datetime.today().strftime('%Y-%m-%d %H-%M-%S') + '.log').resolve())
+	fh = logging.FileHandler(pathlib.Path(f'data/QuickCSF {sessionID} ' + datetime.today().strftime('%Y-%m-%d %H-%M-%S') + '.log').resolve())
 	fh.setLevel(logging.DEBUG)
 	ch = logging.StreamHandler()
 	ch.setLevel(logging.DEBUG)
