@@ -74,8 +74,17 @@ class GaborPatchImage(QtGui.QImage):
 
 				self.setPixel(rx, ry, QtGui.qRgba(r, g, b, a))
 
+	def __str__(self):
+		return self.__repr__()
+
+	def __repr__(self):
+		return f'{self.__class__.__name__}(' + str(vars(self)) + ')'
+
+
 class ContrastGaborPatchImage(GaborPatchImage):
 	def __init__(self, contrast=1.0, *args, **kwargs):
+		self.contrast = contrast
+
 		luminance = 255 * (0.5 + 0.5 * contrast)
 		color1 = QtGui.QColor(luminance, luminance, luminance)
 

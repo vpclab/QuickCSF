@@ -1,3 +1,5 @@
+import logging
+
 import sys, pathlib, csv
 from datetime import datetime
 
@@ -8,11 +10,12 @@ from . import CSFController
 from . import QuickCSF
 from . import StimulusGenerators
 
+logger = logging.getLogger('QuickCSF.app')
+
 def onStateTransition(state, data):
 	if state == 'FINISHED':
 		data = data[0]
 
-		pathlib.Path('data').mkdir(parents=True, exist_ok=True)
 		outputFile = pathlib.Path('data/output.csv')
 
 		fields = list(experimentInfo.keys())
@@ -35,11 +38,14 @@ def onStateTransition(state, data):
 			writer.writerow(record)
 
 
-def start():
+def _start():
 	global experimentInfo, mainWindow
 
+	logger.debug('Getting experiment info')
 	experimentInfo = ui.getExperimentInfo()
+	logger.info('Experiment info: ' + str(experimentInfo))
 	if experimentInfo is not None:
+		logger.debug('Showing main window')
 		mainWindow = ui.QuickCSFWindow()
 
 		stimGenerator = StimulusGenerators.RandomOrientationGenerator(256)
@@ -57,12 +63,17 @@ def start():
 def run():
 	global pid
 
+	logger.info('Starting app')
 	app = QtWidgets.QApplication()
 	app.setApplicationName('QuickCSF')
 
-	QtCore.QTimer.singleShot(0, start)
+	QtCore.QTimer.singleShot(0, _start)
 
 	app.exec_()
+	logger.info('App exited')
 
 if __name__ == '__main__':
+	from . import log
+	log.startLog()
+
 	run()

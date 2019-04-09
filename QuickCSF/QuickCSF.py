@@ -1,7 +1,11 @@
-import numpy
 import logging
+
 import time
 import math
+
+import numpy
+
+logger = logging.getLogger(__name__)
 
 class Stimulus:
 	def __init__(self, contrast, frequency):
@@ -9,6 +13,8 @@ class Stimulus:
 		self.frequency = frequency
 
 def makeContrastSpace(min=.01, max=1, count=24):
+	logger.debug('Making contrast space: ' + str(locals()))
+
 	sensitivityRange = [1/min, 1/max]
 
 	expRange = numpy.log10(sensitivityRange[0])-numpy.log10(sensitivityRange[1])
@@ -23,6 +29,8 @@ def makeContrastSpace(min=.01, max=1, count=24):
 	return contrastSpace
 
 def makeFrequencySpace(min=.2, max=36, count=20):
+	logger.debug('Making frequency space: ' + str(locals()))
+
 	expRange = numpy.log10(max)-numpy.log10(min)
 	expMin = numpy.log10(min)
 
@@ -113,6 +121,8 @@ class QuickCSFEstimator():
 				numpy.arange(0, 21),	# Log bandwidth
 				numpy.arange(0, 21)		# Low frequency truncation (log delta)
 			])
+		logger.info('Initializing QuickCSFEStimator')
+		logger.debug('Initializing QuickCSFEstimator stimSpace='+str(stimulusSpace).replace('\n','')+', paramSpace='+str(parameterSpace).replace('\n',''))
 
 		self.stimulusSpace = stimulusSpace
 		self.parameterSpace = parameterSpace
@@ -137,7 +147,6 @@ class QuickCSFEstimator():
 		# collect random samples from input space
 		# the randomness is weighted by the stim parameter probability
 		# more probable stim params have higher weight of being sampled
-
 		randomSampleCount = 100
 
 		paramIndicies = numpy.random.choice(
@@ -227,6 +236,9 @@ class QuickCSFEstimator():
 
 		contrast = self.stimulusSpace[0][stimIndices[:,0]][0]
 		frequency = self.stimulusSpace[1][stimIndices[:,1]][0]
+
+		logger.info(f'Marking response {stimIndex}[c={contrast},f={frequency}] = {response}')
+
 		self.responseHistory.append([
 			[contrast, frequency],
 			response

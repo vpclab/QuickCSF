@@ -1,4 +1,5 @@
+from . import log
 from . import app
 
-if __name__ == '__main__':
-	app.run()
+log.startLog()
+app.run()

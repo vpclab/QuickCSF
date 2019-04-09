@@ -1,8 +1,11 @@
+import logging
 import math, time
 
 import numpy
 
 from qtpy import QtCore, QtGui, QtWidgets, QtMultimedia
+
+logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = '''For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n
 A tone will play when each option is displayed. After both tones, you will need to select which option contained the striped circle.\n\n
@@ -85,6 +88,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		self.displayWidget.setText(self.finishedText + '\n\n' + str(results[0]))
 
 	def keyReleaseEvent(self, event):
+		logger.debug(f'Key released {event.key()}')
 		if event.key() == QtCore.Qt.Key_Space:
 			self.participantReady.emit()
 		elif event.key() == QtCore.Qt.Key_4:
@@ -93,7 +97,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 			self.participantResponse.emit(False)
 
 	def onNewState(self, stateName, data):
-		print(time.time(), 'UI received new state', stateName)
+		logger.debug(f'New state: {stateName} [{data}]')
 
 		if stateName == 'INSTRUCTIONS':
 			self.showInstructions()
@@ -124,12 +128,11 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif stateName == 'FEEDBACK':
 			self.giveFeedback(data.correct)
 		elif stateName == 'FINISHED':
-			print('Results: ' + str(data))
 			self.showFinished(data)
 
 
 def getExperimentInfo():
-	(pid,pidOK) = QtWidgets.QInputDialog.getText(None, 'sdf', 'ParticipantID')
+	(pid,pidOK) = QtWidgets.QInputDialog.getText(None, 'QuickCSF', 'ParticipantID')
 	if pidOK:
 		return {'participantID': pid}
 	else:
@@ -137,6 +140,7 @@ def getExperimentInfo():
 
 if __name__ == '__main__':
 	import sys
+
 	app = QtWidgets.QApplication()
 	app.setApplicationName('QuickCSF')
 
@@ -147,4 +151,5 @@ if __name__ == '__main__':
 	window.setText('hi')
 	window.setPixmap(QtGui.QPixmap.fromImage(img))
 	window.show()
+
 	sys.exit(app.exec_())

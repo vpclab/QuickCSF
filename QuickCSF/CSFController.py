@@ -1,7 +1,10 @@
+import logging
 import random
 import time, math
 
 from qtpy import QtWidgets, QtCore
+
+logger = logging.getLogger(__name__)
 
 def chunkList(sequence, numberOfChunks):
 	avg = len(sequence) / float(numberOfChunks)
@@ -59,7 +62,7 @@ class Trial_2AFC():
 		return self.__repr__()
 
 	def __repr__(self):
-		return f'Trial(stim={self.stimulus},stimOnFirst={self.stimulusOnFirst},correct={self.correct})'
+		return f'{self.__class__.__name__}(' + str(vars(self)) + ')'
 
 class Controller_2AFC(QtCore.QObject):
 	stateTransition = QtCore.Signal(object, object)
@@ -102,6 +105,7 @@ class Controller_2AFC(QtCore.QObject):
 		random.shuffle(stimOnFirstPool)
 		stimOnFirstPool = stimOnFirstPool[:totalTrialCount]
 
+		logger.debug(f'Building {blockCount} blocks of {trialsPerBlock} trials each')
 		for b in range(blockCount):
 			for i in range(trialsPerBlock):
 				trials.append(Trial_2AFC(stimOnFirstPool.pop()))

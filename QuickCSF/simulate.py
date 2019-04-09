@@ -10,6 +10,8 @@ import pathlib
 
 from . import QuickCSF
 
+logger = logging.getLogger('QuickCSF.simulate')
+
 # Plot the current state
 def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 64, 50).reshape(-1,1)
@@ -66,10 +68,16 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 	plt.pause(0.001) # necessary for non-blocking graphing
 
 def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=False, usePerfectResponses=False):
+	logger.info('Starting simulation')
 	numpy.random.seed()
 
 	if saveImages:
 		pathlib.Path('figs').mkdir(parents=True, exist_ok=True) 
+
+	stimulusSpace = numpy.array([
+		QuickCSF.makeContrastSpace(),
+		QuickCSF.makeFrequencySpace()
+	])
 
 #		parameterSpace = numpy.array([
 #			numpy.linspace(2, 2000, 28),	# Peak sensitivity
@@ -77,11 +85,6 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 #			numpy.linspace(1, 9, 21),		# Log bandwidth
 #			numpy.linspace(.02, 2, 21)		# Log delta (truncation)
 #		])
-	stimulusSpace = numpy.array([
-		QuickCSF.makeContrastSpace(),
-		QuickCSF.makeFrequencySpace()
-	])
-
 	parameterSpace = numpy.array([
 		numpy.arange(0, 28),	# Peak sensitivity
 		numpy.arange(0, 21),	# Peak frequency
@@ -106,10 +109,9 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 		stimulus = qcsf.next()
 		newStimValues = numpy.array([[stimulus.contrast, stimulus.frequency]])
 		
-		logging.debug('****************** SIMUL RESPON ******************')
 		# Simulate a response
 		if usePerfectResponses:
-			
+			logger.debug('Simulating perfect response')
 			frequency = newStimValues[:,1]
 			trueSens = numpy.power(10, QuickCSF.csf(unmappedTrueParams, numpy.array([frequency])))
 			testContrast = newStimValues[:,0]
@@ -117,6 +119,7 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 
 			response = trueSens > testSens
 		else:
+			logger.debug('Simulating human response response')
 			p = qcsf._pmeas(unmappedTrueParams)
 			response = numpy.random.rand() < p
 
@@ -130,21 +133,28 @@ def runSimulation(trueParameters=[20, 11, 12, 11], iterations=30, saveImages=Fal
 		if saveImages:
 			plt.savefig('figs/%d.png' % int(time.time()*1000))
 
-	print('DONE')
-	print('*******')
+	logger.info('Simulation complete')
+	print('******* History *******')
 	for record in qcsf.responseHistory:
-		print(f'f={record[0][1]},c={record[0][0]},r={record[1]}')
+		print(f'\tf={record[0][1]},c={record[0][0]},r={record[1]}')
 
-	print('*******')
+	print('***********************')
+
 	paramEstimates = qcsf.getResults()
+	logger.info('Results: ' + str(paramEstimates))
+
 	trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, True).T
-	print(f'Estimates = {paramEstimates}')
-	print(f'Actuals = {trueParams}')
+	print('******* Results *******')
+	print(f'\tEstimates = {paramEstimates}')
+	print(f'\tActuals = {trueParams}')
+	print('***********************')
 
 	plt.ioff()
 	plt.show()
 #	plt.close()
 
-
 if __name__ == '__main__':
+	from . import log
+	log.startLog()
+	
 	runSimulation(usePerfectResponses=False, iterations=50)
