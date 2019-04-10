@@ -15,17 +15,26 @@ logger = logging.getLogger('QuickCSF.simulate')
 
 # Plot the current state
 def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
-	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 64, 50).reshape(-1,1)
+	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 80, 50).reshape(-1,1)
 
 	if unmappedTrueParams is not None:
 		truthData = QuickCSF.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
 		truthData = numpy.power(10, truthData)
-		truthLine, = graph.plot(frequencyDomain, truthData, linestyle=':', color='gray')
+		truthLine = graph.fill_between(
+			frequencyDomain.reshape(-1),
+			truthData.reshape(-1),
+			color=(1, 0, 0, .5)
+		)
 
 	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
 	estimatedData = QuickCSF.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 	estimatedData = numpy.power(10, estimatedData)
-	estimatedLine, = graph.plot(frequencyDomain, estimatedData, linewidth=2.5)
+
+	estimatedLine = graph.fill_between(
+		frequencyDomain.reshape(-1),
+		estimatedData.reshape(-1),
+		color=(0, 0, 1, .4)
+	)
 	
 	## Chart responses
 	positives = {'f':[], 's':[]}
@@ -36,12 +45,12 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 		targetArray['f'].append(stimValues[1])
 		targetArray['s'].append(1/stimValues[0])
 
-	graph.plot(positives['f'], positives['s'], 'g^')
-	graph.plot(negatives['f'], negatives['s'], 'rv')
+	graph.plot(positives['f'], positives['s'], 'o', markersize=4, color=(.2, 1, .2))
+	graph.plot(negatives['f'], negatives['s'], 'x', markersize=5, color=(1,0,0), markeredgewidth=2)
 
 	graph.set_xlabel('Spatial frequency (CPD)')
 	graph.set_xscale('log')
-	graph.set_xlim((.125, 64))
+	graph.set_xlim((.25, 64))
 	graph.set_xticks([1, 2, 4, 8, 16, 32])
 	graph.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
@@ -184,7 +193,7 @@ if __name__ == '__main__':
 	parser.add_argument('-maxf', '--maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
 	parser.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
 
-	parser.add_argument('-s', '--truePeakSensitivity', type=int, default=10, help='True peak sensitivity')
+	parser.add_argument('-s', '--truePeakSensitivity', type=int, default=18, help='True peak sensitivity')
 	parser.add_argument('-f', '--truePeakFrequency', type=int, default=11, help='True peak frequency')
 	parser.add_argument('-b', '--trueBandwidth', type=int, default=12, help='True bandwidth')
 	parser.add_argument('-d', '--trueDelta', type=int, default=11, help='True delta truncation')
