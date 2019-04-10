@@ -14,7 +14,14 @@ from . import QuickCSF
 logger = logging.getLogger('QuickCSF.simulate')
 
 # Plot the current state
-def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
+def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
+	if graph is None:
+		fig = plt.figure()
+		graph = fig.add_subplot(1, 1, 1)
+
+		plt.ion()
+		plt.show()
+
 	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 80, 50).reshape(-1,1)
 
 	if unmappedTrueParams is not None:
@@ -25,6 +32,8 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 			truthData.reshape(-1),
 			color=(1, 0, 0, .5)
 		)
+	else:
+		truthData = None
 
 	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
 	estimatedData = QuickCSF.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
@@ -77,6 +86,8 @@ def plot(qCSFEstimator, graph, unmappedTrueParams=None, showNumbers=True):
 
 	plt.pause(0.001) # necessary for non-blocking graphing
 
+	return graph
+
 def runSimulation(
 	truePeakSensitivity=10,
 	truePeakFrequency=11,
@@ -117,13 +128,7 @@ def runSimulation(
 	unmappedTrueParams = numpy.array([trueParameters])
 	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace, parameterSpace)
 
-	fig = plt.figure()
-	graph = fig.add_subplot(1, 1, 1)
-
-	plt.ion()
-	plt.show()
-
-	plot(qcsf, graph, unmappedTrueParams)
+	graph = plot(qcsf, unmappedTrueParams=unmappedTrueParams)
 
 	# Trial loop
 	for i in range(trials):

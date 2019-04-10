@@ -18,7 +18,7 @@ class GaborPatchImage(QtGui.QImage):
 		orientation=45,
 		gaussianStd=None,
 		frequency=.1,
-		phase=0,
+		phase=math.tau/8,
 		color1=QtGui.QColor(255, 255, 255),
 		color2=QtGui.QColor(0, 0, 0)
 	):

@@ -2,6 +2,7 @@ import logging
 
 import argparse
 import sys, pathlib, csv
+import functools
 from datetime import datetime
 
 from qtpy import QtWidgets, QtCore
@@ -10,6 +11,7 @@ from . import ui
 from . import CSFController
 from . import QuickCSF
 from . import StimulusGenerators
+from . import screens
 
 logger = logging.getLogger('QuickCSF.app')
 
@@ -42,7 +44,6 @@ def onStateTransition(state, data):
 			record = {**record, **experimentInfo}
 			writer.writerow(record)
 
-
 def _start(settings):
 	global experimentInfo, mainWindow
 
@@ -56,7 +57,11 @@ def _start(settings):
 
 	mainWindow = ui.QuickCSFWindow(instructions)
 
-	stimGenerator = StimulusGenerators.RandomOrientationGenerator(**settings['stim'])
+	degreesToPixels = None
+	if settings['distance_mm'] is not None:
+		degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
+
+	stimGenerator = StimulusGenerators.RandomOrientationGenerator(degreesToPixels=degreesToPixels, **settings['stim'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['controller'])
 
 	mainWindow.participantReady.connect(controller.onParticipantReady)
@@ -78,6 +83,7 @@ def run(settings=None):
 def getSettings():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-sid', '--sessionID', default=None, help='A unique string to identify this observer/session')
+	parser.add_argument('-d', '--distance_mm', type=float, default=None, help='Distance (mm) from the display to the observer')
 	parser.add_argument('--instructionsFile', default=None, help='A plaintext file containing the instructions')
 
 	parser.add_argument('--controller.trialsPerBlock', type=int, default=25, help='Number of trials in each block')
@@ -99,7 +105,7 @@ def getSettings():
 	parser.add_argument('-maxf', '--stim.maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
 	parser.add_argument('-fr', '--stim.frequencyResolution', type=int, default=20, help='The number of frequency steps')
 
-	parser.add_argument('--stim.size', type=int, default=256, help='Gabor patch size in pixels')
+	parser.add_argument('--stim.size', type=int, default=3, help='Gabor patch size in (degrees)')
 
 	settings = vars(parser.parse_args())
 	if settings['sessionID'] is None:

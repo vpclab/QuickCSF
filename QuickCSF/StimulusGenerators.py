@@ -23,6 +23,7 @@ class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
 		size=100,
 		minContrast=.01, maxContrast=1.0, contrastResolution=24,
 		minFrequency=0.2, maxFrequency=36.0, frequencyResolution=20,
+		degreesToPixels=None
 	):
 		print(locals())
 		super().__init__(
@@ -32,14 +33,18 @@ class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
 			])
 		)
 
-		self.fixedSize = size
+		if degreesToPixels is None:
+			self.degreesToPixels = lambda x: x
+
+		self.size = size
+		self.degreesToPixels = degreesToPixels
 
 	def next(self):
 		stimulus = super().next()
 
 		return gaborPatch.ContrastGaborPatchImage(
-			size=self.fixedSize,
+			size=self.degreesToPixels(self.size),
 			contrast=stimulus.contrast,
-			frequency=stimulus.frequency/100,
+			frequency=1/self.degreesToPixels(1/stimulus.frequency),
 			orientation=random.random() * 360,
 		)
