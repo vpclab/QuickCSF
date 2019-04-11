@@ -112,12 +112,6 @@ def runSimulation(
 		QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
 	])
 
-#		parameterSpace = numpy.array([
-#			numpy.linspace(2, 2000, 28),	# Peak sensitivity
-#			numpy.linspace(.2, 20, 21),		# Peak frequency
-#			numpy.linspace(1, 9, 21),		# Log bandwidth
-#			numpy.linspace(.02, 2, 21)		# Log delta (truncation)
-#		])
 	parameterSpace = numpy.array([
 		numpy.arange(0, 28),	# Peak sensitivity
 		numpy.arange(0, 21),	# Peak frequency
@@ -175,10 +169,29 @@ def runSimulation(
 	print(f'\tEstimates = {paramEstimates}')
 	print(f'\tActuals = {trueParams}')
 	print('***********************')
+	plt.ioff()
+	plt.show()
+
+def probabilityPlot(qcsf):
+	params = numpy.arange(qcsf.paramComboCount).reshape(-1, 1)
+	stims = numpy.arange(qcsf.stimComboCount).reshape(-1,1)
+
+	p = qcsf._pmeas(params, stims)
+
+	pbar = sum(p)/len(params)
+	hbar = sum(QuickCSF.entropy(p))/len(params)
+	gain = QuickCSF.entropy(pbar)-hbar
+
+
+	gain = -gain.reshape(qcsf.stimulusRanges[::-1]).T
+
+	fig = plt.figure()
+	graph = fig.add_subplot(1, 1, 1)
+	plt.imshow(gain, cmap='hot')
 
 	plt.ioff()
 	plt.show()
-#	plt.close()
+
 
 if __name__ == '__main__':
 	from . import log
