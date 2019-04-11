@@ -1,27 +1,33 @@
+# -*- coding: utf-8 -*
+'''Gabor patches as QImages'''
+
 import math
 
 from qtpy import QtGui
 
 class GaborPatchImage(QtGui.QImage):
-	'''
-		Create a Gabor Patch as a QImage
-		@param size        : the width and height in pixels
-		@param orienation  : grating orientation in degrees
-		@param gaussianStd : gaussian smoothing standard deviation (in pixels)
-		@param frequency   : spatial frequency in cycles/pixel
-		@param phase       : phase shift in cycles (0.0-1.0)
-		@param color1      : the first color
-		@param color2      : the second color
-	'''
+	'''Create a gabor patch'''
+
 	def __init__(self,
 		size=100,
 		orientation=45,
 		gaussianStd=None,
 		frequency=.1,
-		phase=math.tau/8,
+		phase=math.tau/4,
 		color1=QtGui.QColor(255, 255, 255),
 		color2=QtGui.QColor(0, 0, 0)
 	):
+		'''Create a gabor patch QImage
+
+			Args:
+				size: the width and height in pixels
+				orienation: grating orientation in degrees
+				gaussianStd: gaussian smoothing standard deviation in pixels
+				frequency: spatial frequency in cycles per pixel
+				phase: phase shift
+				color1: the first color
+				color2: the second color
+		'''
 		super().__init__(size, size, QtGui.QImage.Format_ARGB32)
 		
 		self.size = size
@@ -61,7 +67,7 @@ class GaborPatchImage(QtGui.QImage):
 				y = r * math.sin(t)
 
 				# The amplitude without envelope (from 0 to 1)
-				amp = 0.5 + 0.5 * math.cos(math.tau * (x * self.frequency + self.phase))
+				amp = 0.5 + 0.5 * math.cos(self.phase + math.tau * (x * self.frequency))
 
 				# The amplitude of the pixel (from 0 to 1)
 				f = math.e**(-0.5 * pow(x / self.gaussianStd, 2) - 0.5 * pow(y / self.gaussianStd, 2))
@@ -83,6 +89,12 @@ class GaborPatchImage(QtGui.QImage):
 
 class ContrastGaborPatchImage(GaborPatchImage):
 	def __init__(self, contrast=1.0, *args, **kwargs):
+		'''Create a black-and-white gabor patch QImage by specifiying contrast
+
+			Args:
+				contrast: a value between 0-1 indicating how much contrast should be present between dark and light bands
+		'''
+
 		self.contrast = contrast
 
 		luminance = 255 * (0.5 + 0.5 * contrast)

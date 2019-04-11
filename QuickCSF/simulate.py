@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*
+'''Simulate a QuickCSF experiment'''
+
 import logging
 import argparse
 import time
@@ -13,8 +16,9 @@ from . import QuickCSF
 
 logger = logging.getLogger('QuickCSF.simulate')
 
-# Plot the current state
 def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
+	'''Generate a plot of estimates from QuickCSF, along with history of responses and true parameter values'''
+	
 	if graph is None:
 		fig = plt.figure()
 		graph = fig.add_subplot(1, 1, 1)
@@ -172,7 +176,7 @@ def runSimulation(
 	plt.ioff()
 	plt.show()
 
-def probabilityPlot(qcsf):
+def entropyPlot(qcsf):
 	params = numpy.arange(qcsf.paramComboCount).reshape(-1, 1)
 	stims = numpy.arange(qcsf.stimComboCount).reshape(-1,1)
 

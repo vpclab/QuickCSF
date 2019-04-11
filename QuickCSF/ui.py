@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*
+'''User interaction (display and input)'''
+
 import logging
 import math, time
 
@@ -15,6 +18,8 @@ Throughout the test, keep your gaze fixated on the circled-dot at the center of 
 If you are uncertain, make a guess.\n\n\nPress [ SPACEBAR ] to start.'''
 
 class QuickCSFWindow(QtWidgets.QMainWindow):
+	'''The main window for QuickCSF.app'''
+
 	participantReady = QtCore.Signal()
 	participantResponse = QtCore.Signal(object)
 
@@ -132,6 +137,8 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 
 
 def getExperimentInfo():
+	'''Display a GUI to collect experiment settings'''
+	
 	(sid,sidOK) = QtWidgets.QInputDialog.getText(None, 'QuickCSF', 'SessionID')
 	if sidOK:
 		return {'sessionID': sid}

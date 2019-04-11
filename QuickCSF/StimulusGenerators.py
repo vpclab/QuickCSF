@@ -1,3 +1,5 @@
+'''Classes to generate stimuli for testing'''
+
 import random
 
 import numpy
@@ -19,13 +21,14 @@ class Stimulus:
 		return f'c={self.contrast},f={self.frequency},o={self.orientation},s={self.size}'
 
 class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
+	'''Generate fixed-size stimuli with random rotations, contrast/spatial frequency determined by QuickCSF'''
+
 	def __init__(self,
 		size=100,
 		minContrast=.01, maxContrast=1.0, contrastResolution=24,
 		minFrequency=0.2, maxFrequency=36.0, frequencyResolution=20,
 		degreesToPixels=None
 	):
-		print(locals())
 		super().__init__(
 			stimulusSpace = numpy.array([
 				QuickCSF.makeContrastSpace(minContrast, maxContrast, contrastResolution),
@@ -33,11 +36,11 @@ class RandomOrientationGenerator(QuickCSF.QuickCSFEstimator):
 			])
 		)
 
+		self.size = size
 		if degreesToPixels is None:
 			self.degreesToPixels = lambda x: x
-
-		self.size = size
-		self.degreesToPixels = degreesToPixels
+		else:
+			self.degreesToPixels = degreesToPixels
 
 	def next(self):
 		stimulus = super().next()

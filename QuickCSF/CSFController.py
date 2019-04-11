@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*
+'''A 2AFC controller for the simple QuickCSF.app'''
+
 import logging
 import random
 import time, math
@@ -6,19 +9,15 @@ from qtpy import QtWidgets, QtCore
 
 logger = logging.getLogger(__name__)
 
-def chunkList(sequence, numberOfChunks):
-	avg = len(sequence) / float(numberOfChunks)
-	out = []
-	last = 0.0
-
-	while last < len(sequence):
-		out.append(sequence[int(last):int(last + avg)])
-		last += avg
-
-	return out
-
 class State:
+	'''Base class for state objects that describe the state of the controller and transition map'''
+
 	def __init__(self, nextStateName=None, name=None):
+		'''Create a new state		
+			Args:
+				nextStateName (str): the state we should transition to when finished
+				name (str): the name of this state
+		'''
 		self.name = name
 		self.finished = False
 		self.nextStateName = nextStateName
@@ -36,9 +35,12 @@ class State:
 		pass
 
 class InputState(State):
+	'''States that require a user response'''
 	pass
 
 class TimedState(State):
+	'''States that automatically finish after a fixed duration'''
+
 	def __init__(self, duration, nextStateName=None, name=None):
 		super().__init__(nextStateName, name)
 		self.startTime = None
@@ -53,6 +55,8 @@ class TimedState(State):
 			self.finished = (time.time() - self.startTime) > self.duration
 
 class Trial_2AFC():
+	'''Represents a single trial'''
+
 	def __init__(self, stimulusOnFirst):
 		self.stimulusOnFirst = stimulusOnFirst
 		self.stimulus = {}
@@ -65,6 +69,19 @@ class Trial_2AFC():
 		return f'{self.__class__.__name__}(' + str(vars(self)) + ')'
 
 class Controller_2AFC(QtCore.QObject):
+	'''A 2AFC experiment controller
+	
+		Follows a basic pattern:
+			Execute `blockCount` blocks:
+				Execute `trialsPerBlock` trials:
+					Determine the visual stimulus to be displayed
+					(optional) Wait for participant to indicate they are ready
+					Play two audible tones, displaying a visual stimulus during one of them
+					Wait for participant response indicating if the the visual stimulus was present for the first or second audible tone
+					Record the response
+				Take a break between blocks
+	'''
+
 	stateTransition = QtCore.Signal(object, object)
 
 	def __init__(self,
@@ -83,20 +100,19 @@ class Controller_2AFC(QtCore.QObject):
 
 		self.stimulusGenerator = stimulusGenerator
 
-		self.blocks = self.buildTrialBlocks(
+		self.blocks = self._buildTrialBlocks(
 			trialsPerBlock,
 			blockCount
 		)
-		self.stateSpace = self.buildStateSpace(fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady)
+		self.stateSpace = self._buildStateSpace(fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady)
 		self.state = self.stateSpace['INSTRUCTIONS']
 
-	def start(self):
-		self.tick = QtCore.QTimer(self)
-		self.tick.timeout.connect(self.update)
-		self.tick.start()
-		self.stateTransition.emit(self.state.name, self.getCurrentTrial())
+	def _buildTrialBlocks(self, trialsPerBlock, blockCount):
+		'''Build blocks of trials
 
-	def buildTrialBlocks(self, trialsPerBlock, blockCount):
+			Creates the specified number of trials, shuffles them, then chunks them into blocks and shuffles the blocks
+		'''
+
 		trials = []
 
 		totalTrialCount = trialsPerBlock * blockCount
@@ -111,12 +127,19 @@ class Controller_2AFC(QtCore.QObject):
 				trials.append(Trial_2AFC(stimOnFirstPool.pop()))
 
 		random.shuffle(trials)
-		blocks = chunkList(trials, blockCount)
+
+		blocks = []
+		for b in range(blockCount):
+			blocks.append([])
+			for t in range(trialsPerBlock):
+				blocks[-1].append(trials.pop())
 
 		random.shuffle(blocks)
 		return blocks
 
-	def buildStateSpace(self, fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady):
+	def _buildStateSpace(self, fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady):
+		'''Build states and define their transition edges'''
+
 		states = {
 			'FINISHED': InputState(),
 		}
@@ -160,11 +183,28 @@ class Controller_2AFC(QtCore.QObject):
 
 		return states
 
+	def start(self):
+		'''Insert `update` function call into the Qt event loop and initiate the starting state'''
+
+		self.tick = QtCore.QTimer(self)
+		self.tick.timeout.connect(self._update)
+		self.tick.start()
+		self.stateTransition.emit(self.state.name, self.getCurrentTrial())
+
 	def getCurrentTrial(self):
 		if len(self.blocks) > 0 and len(self.blocks[0]) > 0:
 			return self.blocks[0][0]
 		else:
 			return None
+
+	def checkState(self, okStates):
+		if not type(okStates) is list:
+			okStates = [okStates]
+
+		return self.state.name in okStates
+
+	def isFinished(self):
+		return self.checkState('FINISHED')
 
 	def onParticipantReady(self):
 		if self.checkState(['INSTRUCTIONS', 'WAIT_FOR_READY', 'BREAKING', 'FINISHED']):
@@ -177,7 +217,13 @@ class Controller_2AFC(QtCore.QObject):
 			self.stimulusGenerator.markResponse(trial.correct)
 			self.state.finished = True
 
-	def update(self):
+	def _update(self):
+		'''Update the current state, transition to the next state if finished
+		
+			Note:
+				This is called automatically by Qt's event loop after `start()` has been called
+		'''
+
 		if self.state == None:
 			return
 
@@ -196,7 +242,6 @@ class Controller_2AFC(QtCore.QObject):
 				trial = self.getCurrentTrial()
 				if trial is not None:
 					trial.stimulus = self.stimulusGenerator.next()
-				
 
 			nextStateName = self.state.getNextStateName()
 			if nextStateName is None:
@@ -211,12 +256,3 @@ class Controller_2AFC(QtCore.QObject):
 					self.stateTransition.emit(self.state.name, self.stimulusGenerator.getResults())
 				else:
 					self.stateTransition.emit(self.state.name, self.getCurrentTrial())
-
-	def isFinished(self):
-		return self.checkState('FINISHED')
-
-	def checkState(self, okStates):
-		if not type(okStates) is list:
-			okStates = [okStates]
-
-		return self.state.name in okStates

@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*
+'''An simple QuickCSF app to measure full contrast sensitivity function
+
+	Executes a series of trials using 2AFC to measure CSF. Results are saved to a .CSF file.
+
+	Example:
+		$ python3 -m QuickCSF.app --help
+		$ python3 -m QuickCSF.app -d 750 -s participant001
+		$ python3 -m QuickCSF.app -d 750 --controller.trialsPerBlock 50 --controller.blockCount 2
+'''
+
 import logging
 
 import argparse
@@ -18,8 +29,10 @@ logger = logging.getLogger('QuickCSF.app')
 app = QtWidgets.QApplication()
 app.setApplicationName('QuickCSF')
 
+experimentInfo = None
+mainWindow = None
 
-def onStateTransition(state, data):
+def _onStateTransition(state, data):
 	if state == 'FINISHED':
 		data = data[0]
 
@@ -68,19 +81,21 @@ def _start(settings):
 	mainWindow.participantResponse.connect(controller.onParticipantResponse)
 
 	controller.stateTransition.connect(mainWindow.onNewState)
-	controller.stateTransition.connect(onStateTransition)
+	controller.stateTransition.connect(_onStateTransition)
 
 	QtCore.QTimer.singleShot(0, controller.start)
 	mainWindow.showFullScreen()
 
 def run(settings=None):
-	global pid
+	'''Start the QuickCSF app'''
 
 	QtCore.QTimer.singleShot(0, lambda: _start(settings))
 	app.exec_()
 	logger.info('App exited')
 
 def getSettings():
+	'''Parse command line arguments for the QuickCSF app. Will show a UI promptif necessary information is missing'''
+
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-sid', '--sessionID', default=None, help='A unique string to identify this observer/session')
 	parser.add_argument('-d', '--distance_mm', type=float, default=None, help='Distance (mm) from the display to the observer')
