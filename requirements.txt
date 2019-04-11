@@ -1,5 +1,0 @@
-matplotlib==3.0.3
-numpy==1.16.2
-QtPy==1.7.0
-PySide2==5.12.2
-

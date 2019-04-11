@@ -8,6 +8,8 @@ import numpy
 
 from qtpy import QtCore, QtGui, QtWidgets, QtMultimedia
 
+from . import assets
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_INSTRUCTIONS = '''For this test, you will be presented with two options - one will be blank, and the other will be a striped circle.\n\n
@@ -46,9 +48,9 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 
 		self.setCentralWidget(self.displayWidget)
 		self.sounds = {
-			'tone': QtMultimedia.QSound('assets/tone.wav'),
-			'good': QtMultimedia.QSound('assets/good.wav'),
-			'bad': QtMultimedia.QSound('assets/bad.wav'),
+			'tone': QtMultimedia.QSound(assets.locate('tone.wav')),
+			'good': QtMultimedia.QSound(assets.locate('good.wav')),
+			'bad': QtMultimedia.QSound(assets.locate('bad.wav')),
 		}
 
 	def showInstructions(self):
