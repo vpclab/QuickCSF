@@ -116,15 +116,8 @@ def runSimulation(
 		QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
 	])
 
-	parameterSpace = numpy.array([
-		numpy.arange(0, 28),	# Peak sensitivity
-		numpy.arange(0, 21),	# Peak frequency
-		numpy.arange(0, 21),	# Log bandwidth
-		numpy.arange(0, 21)		# Low frequency truncation (log delta)
-	])
-
 	unmappedTrueParams = numpy.array([trueParameters])
-	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace, parameterSpace)
+	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace)
 
 	graph = plot(qcsf, unmappedTrueParams=unmappedTrueParams)
 
