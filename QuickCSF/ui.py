@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*
 '''User interaction (display and input)'''
 
+import sys, traceback
 import logging
 import math, time
 
@@ -147,18 +148,27 @@ def getExperimentInfo():
 	else:
 		return None
 
-if __name__ == '__main__':
-	import sys
+def exception_handler(excType, exc, tb, extraDetails=None, parentWindow=None):
+	if issubclass(excType, KeyboardInterrupt):
+		sys.__excepthook__(excType, exc, tb)
+		return
 
-	app = QtWidgets.QApplication()
-	app.setApplicationName('QuickCSF')
+	stack = traceback.format_tb(tb)
 
-	img = ContrastGaborPatchImage(contrast=1.0, size=100, frequency=.1, orientation=0)
-	window = QtWidgets.QLabel()
-	window.setStyleSheet('background-color: rgb(127, 127, 127)')
-	window.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
-	window.setText('hi')
-	window.setPixmap(QtGui.QPixmap.fromImage(img))
-	window.show()
+	details = '%s: %s\n%s' % (excType.__name__, exc, ''.join(stack))
+	print('UNHANDLED EXCEPTION! ' + details, file=sys.stderr)
 
-	sys.exit(app.exec_())
+	dialog = QtWidgets.QMessageBox(parentWindow)
+	dialog.setWindowTitle('QuickCSF - Application Error')
+	dialog.setText('Something went wrong and we were not prepared for it :(\n\nThe application will now exit, but some details may be available below.')
+
+	if extraDetails is not None:
+		details = extraDetails + '\n\n' + details
+
+	dialog.setDetailedText(details)
+	dialog.setModal(True)
+	dialog.exec_()
+	QtWidgets.QApplication.exit()
+
+def popupUncaughtExceptions(extraDetails=None, parent=None):
+	sys.excepthook = lambda excType, exc, tb: exception_handler(excType, exc, tb, extraDetails, parent)

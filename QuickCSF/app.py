@@ -70,9 +70,7 @@ def _start(settings):
 
 	mainWindow = ui.QuickCSFWindow(instructions)
 
-	degreesToPixels = None
-	if settings['distance_mm'] is not None:
-		degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
+	degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
 
 	stimGenerator = StimulusGenerators.RandomOrientationGenerator(degreesToPixels=degreesToPixels, **settings['stim'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['controller'])
@@ -88,7 +86,7 @@ def _start(settings):
 
 def run(settings=None):
 	'''Start the QuickCSF app'''
-
+	ui.popupUncaughtExceptions()
 	QtCore.QTimer.singleShot(0, lambda: _start(settings))
 	app.exec_()
 	logger.info('App exited')
