@@ -130,7 +130,7 @@ def getSettings():
 
 	settings = argparseqt.groupingTools.parseIntoGroups(parser)
 	if None in [settings['sessionID'], settings['distance_mm']]:
-		settings = ui.getSettings(parser, settings)
+		settings = ui.getSettings(parser, settings, ['sessionID', 'distance_mm'])
 
 	return settings
 

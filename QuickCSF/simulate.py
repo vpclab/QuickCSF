@@ -11,6 +11,8 @@ import numpy
 import matplotlib
 import matplotlib.pyplot as plt
 import pathlib
+import argparseqt.gui
+import argparseqt.groupingTools
 
 from . import QuickCSF
 
@@ -93,30 +95,36 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 	return graph
 
 def runSimulation(
-	truePeakSensitivity=10,
-	truePeakFrequency=11,
-	trueBandwidth=12,
-	trueDelta=11,
-	minContrast=0.01, maxContrast=1, contrastResolution=24,
-	minFrequency=.2, maxFrequency=36, frequencyResolution=20,
 	trials=30,
 	imagePath=None,
-	usePerfectResponses=False
+	usePerfectResponses=False,
+	stimuli={
+		'minContrast':0.01, 'maxContrast':1, 'contrastResolution':24,
+		'minFrequency':.2, 'maxFrequency':36, 'frequencyResolution':20,
+	},
+	parameters={
+		'truePeakSensitivity':18, 'truePeakFrequency':11,
+		'trueBandwidth':12, 'trueBandwidth':11,
+	},
 ):
 	logger.info('Starting simulation')
 
-	trueParameters=[truePeakSensitivity, truePeakFrequency, trueBandwidth, trueBandwidth]
 	numpy.random.seed()
 
 	if imagePath is not None:
 		pathlib.Path(imagePath).mkdir(parents=True, exist_ok=True) 
 
 	stimulusSpace = numpy.array([
-		QuickCSF.makeContrastSpace(minContrast, maxContrast, contrastResolution),
-		QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
+		QuickCSF.makeContrastSpace(stimuli['minContrast'], stimuli['maxContrast'], stimuli['contrastResolution']),
+		QuickCSF.makeFrequencySpace(stimuli['minFrequency'], stimuli['maxFrequency'], stimuli['frequencyResolution'])
 	])
 
-	unmappedTrueParams = numpy.array([trueParameters])
+	unmappedTrueParams = numpy.array([[
+		parameters['truePeakSensitivity'],
+		parameters['truePeakFrequency'],
+		parameters['trueBandwidth'],
+		parameters['trueBandwidth'],
+	]])
 	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace)
 
 	graph = plot(qcsf, unmappedTrueParams=unmappedTrueParams)
@@ -196,23 +204,31 @@ if __name__ == '__main__':
 	
 	parser = argparse.ArgumentParser()
 
-	parser.add_argument('-n', '--trials', type=int, default=50, help='Number of trials to simulate')
-	parser.add_argument('--imagePath', default=None, help='Where to save images')
+	parser.add_argument('-n', '--trials', type=int, help='Number of trials to simulate')
+	parser.add_argument('--imagePath', default=None, help='If specified, path to save images')
 	parser.add_argument('-perfect', '--usePerfectResponses', default=False, action='store_true', help='Whether to simulate perfect responses, rather than probablistic ones')
 
-	parser.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
-	parser.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
-	parser.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
+	stimuliSettings = parser.add_argument_group('stimuli')
+	stimuliSettings.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	stimuliSettings.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
+	stimuliSettings.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
 
-	parser.add_argument('-minf', '--minFrequency', type=float, default=0.2, help='The lowest frequency value to measure (cycles per degree)')
-	parser.add_argument('-maxf', '--maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
-	parser.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
+	stimuliSettings.add_argument('-minf', '--minFrequency', type=float, default=0.2, help='The lowest frequency value to measure (cycles per degree)')
+	stimuliSettings.add_argument('-maxf', '--maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
+	stimuliSettings.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
 
-	parser.add_argument('-s', '--truePeakSensitivity', type=int, default=18, help='True peak sensitivity')
-	parser.add_argument('-f', '--truePeakFrequency', type=int, default=11, help='True peak frequency')
-	parser.add_argument('-b', '--trueBandwidth', type=int, default=12, help='True bandwidth')
-	parser.add_argument('-d', '--trueDelta', type=int, default=11, help='True delta truncation')
+	parameterSettings = parser.add_argument_group('parameters')
+	parameterSettings.add_argument('-s', '--truePeakSensitivity', type=int, default=18, help='True peak sensitivity (index)')
+	parameterSettings.add_argument('-f', '--truePeakFrequency', type=int, default=11, help='True peak frequency (index)')
+	parameterSettings.add_argument('-b', '--trueBandwidth', type=int, default=12, help='True bandwidth (index)')
+	parameterSettings.add_argument('-d', '--trueDelta', type=int, default=11, help='True delta truncation (index)')
 
-	settings = vars(parser.parse_args())
+	settings = argparseqt.groupingTools.parseIntoGroups(parser)
+	if settings['trials'] is None:
+		from qtpy import QtWidgets
+		from . import ui
+		app = QtWidgets.QApplication()
+		settings = ui.getSettings(parser, settings, ['trials'])
 
-	runSimulation(**settings)
+	if settings is not None:
+		runSimulation(**settings)

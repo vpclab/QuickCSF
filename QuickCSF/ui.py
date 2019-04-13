@@ -139,18 +139,24 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif stateName == 'FINISHED':
 			self.showFinished(data)
 
-def getSettings(parser, settings):
+def getSettings(parser, settings, requiredFields=[]):
 	'''Display a GUI to collect experiment settings'''
 	dialog = argparseqt.gui.ArgDialog(parser)
 	dialog.setValues(settings)
 	dialog.exec_()
 	if dialog.result() == QtWidgets.QDialog.Accepted:
 		settings = dialog.getValues()
-		if None in [settings['sessionID'], settings['distance_mm']]:
-			QtWidgets.QMessageBox.critical(None, 'Missing information', 'You must specify a session ID and a distance value')
-			settings = None
+		
+		for field in requiredFields:
+			if settings[field] == None:
+				QtWidgets.QMessageBox.critical(
+					None,
+					'Missing information',
+					'You must specify the following fields: ' + ','.join(requiredFields)
+				)
+				return None
 	else:
-		settings = None
+		return None
 
 	return settings
 
