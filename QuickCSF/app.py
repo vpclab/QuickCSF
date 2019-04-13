@@ -17,6 +17,7 @@ import functools
 from datetime import datetime
 
 from qtpy import QtWidgets, QtCore
+import argparseqt.groupingTools
 
 from . import ui
 from . import CSFController
@@ -28,41 +29,40 @@ logger = logging.getLogger('QuickCSF.app')
 
 app = QtWidgets.QApplication()
 app.setApplicationName('QuickCSF')
-
-experimentInfo = None
 mainWindow = None
+settings = None
 
-def _onStateTransition(state, data):
-	if state == 'FINISHED':
-		data = data[0]
+def _onFinished(csfParameters):
+	outputFile = pathlib.Path(settings['outputFile'])
+	logger.debug('Writing output file: ' + str(outputFile.resolve()))
 
-		outputFile = pathlib.Path('data/output.csv')
+	fileExists = outputFile.exists()
+	with outputFile.open('a') as csvFile:
+		record = {
+			'SessionID': settings['sessionID'],
+			'Timestamp': datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
+			'Peak sensitivity': csfParameters[0],
+			'Peak frequency': csfParameters[1],
+			'Bandwidth': csfParameters[2],
+			'Truncation': csfParameters[3],
+		}
 
-		fields = list(experimentInfo.keys())
-		fields += ['Peak sensitivity', 'Peak frequency', 'Bandwidth', 'Truncation', 'Timestamp']
+		writer = csv.DictWriter(csvFile, fieldnames=record.keys())
+		if not fileExists:
+			writer.writeheader()
 
-		fileExists = outputFile.exists()
-		with outputFile.open('a') as csvFile:
-			writer = csv.DictWriter(csvFile, fieldnames=fields)
-			if not fileExists:
-				writer.writeheader()
+		writer.writerow(record)
 
-			record = {
-				'Timestamp': datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
-				'Peak sensitivity': data[0],
-				'Peak frequency': data[1],
-				'Bandwidth': data[2],
-				'Truncation': data[3],
-			}
-			record = {**record, **experimentInfo}
-			writer.writerow(record)
+def _start():
+	global mainWindow, settings
 
-def _start(settings):
-	global experimentInfo, mainWindow
+	def onStateTransition(state, data):
+		if state == 'FINISHED':
+			_onFinished(data[0])
 
 	logger.debug('Showing main window')
 
-	if settings['instructionsFile'] is not None:
+	if settings['instructionsFile'] is not None and settings['instructionsFile'] != '':
 		with open(settings['instructionsFile']) as instructionsFile:
 			instructions = instructionsFile.read()
 	else:
@@ -72,22 +72,26 @@ def _start(settings):
 
 	degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
 
-	stimGenerator = StimulusGenerators.RandomOrientationGenerator(degreesToPixels=degreesToPixels, **settings['stim'])
-	controller = CSFController.Controller_2AFC(stimGenerator, **settings['controller'])
+	stimGenerator = StimulusGenerators.RandomOrientationGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'])
+	controller = CSFController.Controller_2AFC(stimGenerator, **settings['Controller'])
 
 	mainWindow.participantReady.connect(controller.onParticipantReady)
 	mainWindow.participantResponse.connect(controller.onParticipantResponse)
 
 	controller.stateTransition.connect(mainWindow.onNewState)
-	controller.stateTransition.connect(_onStateTransition)
+	controller.stateTransition.connect(onStateTransition)
 
 	QtCore.QTimer.singleShot(0, controller.start)
 	mainWindow.showFullScreen()
 
-def run(settings=None):
+def run(configuredSettings=None):
 	'''Start the QuickCSF app'''
+	global settings
+	
+	settings = configuredSettings
+
 	ui.popupUncaughtExceptions()
-	QtCore.QTimer.singleShot(0, lambda: _start(settings))
+	QtCore.QTimer.singleShot(0, lambda: _start())
 	app.exec_()
 	logger.info('App exited')
 
@@ -97,54 +101,43 @@ def getSettings():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-sid', '--sessionID', default=None, help='A unique string to identify this observer/session')
 	parser.add_argument('-d', '--distance_mm', type=float, default=None, help='Distance (mm) from the display to the observer')
-	parser.add_argument('--instructionsFile', default=None, help='A plaintext file containing the instructions')
+	parser.add_argument('--outputFile', default='data/QuickCSF-results.csv', help='The path/file to save results into')
+	parser.add_argument('--instructionsFile', default=None, help='A plaintext file containing the instructions. If unspecified, default instructions will be displayed')
 
-	parser.add_argument('--controller.trialsPerBlock', type=int, default=25, help='Number of trials in each block')
-	parser.add_argument('--controller.blockCount', type=int, default=4, help='Number of blocks')
+	controllerSettings = parser.add_argument_group('Controller')
+	controllerSettings.add_argument('--trialsPerBlock', type=int, default=25, help='Number of trials in each block')
+	controllerSettings.add_argument('--blockCount', type=int, default=4, help='Number of blocks')
 
-	parser.add_argument('--controller.fixationDuration', type=float, default=.25, help='How long (seconds) the fixation stimulus is displayed')
-	parser.add_argument('--controller.stimulusDuration', type=float, default=.1, help='How long (seconds) the stimulus is displayed')
-	parser.add_argument('--controller.maskDuration', type=float, default=.1, help='How long (seconds) the stimulus mask is displayed')
-	parser.add_argument('--controller.interStimulusInterval', type=float, default=.1, help='How long (seconds) a blank is displayed between stimuli')
-	parser.add_argument('--controller.feedbackDuration', type=float, default=.5, help='How long (seconds) feedback is displayed')
+	controllerSettings.add_argument('--fixationDuration', type=float, default=.25, help='How long (seconds) the fixation stimulus is displayed')
+	controllerSettings.add_argument('--stimulusDuration', type=float, default=.1, help='How long (seconds) the stimulus is displayed')
+	controllerSettings.add_argument('--maskDuration', type=float, default=.1, help='How long (seconds) the stimulus mask is displayed')
+	controllerSettings.add_argument('--interStimulusInterval', type=float, default=.1, help='How long (seconds) a blank is displayed between stimuli')
+	controllerSettings.add_argument('--feedbackDuration', type=float, default=.5, help='How long (seconds) feedback is displayed')
 
-	parser.add_argument('--controller.waitForReady', default=False, action='store_true', help='Wait for the participant to indicate they are ready for the next trial')
+	controllerSettings.add_argument('--waitForReady', default=False, action='store_true', help='Wait for the participant to indicate they are ready for the next trial')
 
-	parser.add_argument('-minc', '--stim.minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
-	parser.add_argument('-maxc', '--stim.maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
-	parser.add_argument('-cr', '--stim.contrastResolution', type=int, default=24, help='The number of contrast steps')
+	stimulusSettings = parser.add_argument_group('Stimuli')
+	stimulusSettings.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	stimulusSettings.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
+	stimulusSettings.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
 
-	parser.add_argument('-minf', '--stim.minFrequency', type=float, default=0.2, help='The lowest frequency value to measure (cycles per degree)')
-	parser.add_argument('-maxf', '--stim.maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
-	parser.add_argument('-fr', '--stim.frequencyResolution', type=int, default=20, help='The number of frequency steps')
+	stimulusSettings.add_argument('-minf', '--minFrequency', type=float, default=0.2, help='The lowest frequency value to measure (cycles per degree)')
+	stimulusSettings.add_argument('-maxf', '--maxFrequency', type=float, default=36.0, help='The highest frequency value to measure (cycles per degree)')
+	stimulusSettings.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
 
-	parser.add_argument('--stim.size', type=int, default=3, help='Gabor patch size in (degrees)')
+	stimulusSettings.add_argument('--size', type=int, default=3, help='Gabor patch size in (degrees)')
 
-	settings = vars(parser.parse_args())
-	if settings['sessionID'] is None:
-		experimentInfo = ui.getExperimentInfo()
-		if experimentInfo is None:
-			return None
+	settings = argparseqt.groupingTools.parseIntoGroups(parser)
+	if None in [settings['sessionID'], settings['distance_mm']]:
+		settings = ui.getSettings(parser, settings)
 
-		settings = {**settings, **experimentInfo}
-
-	groupedSettings = {}
-	for k,v in settings.items():
-		if '.' in k:
-			parts = k.split('.', 1)
-			if parts[0] not in groupedSettings:
-				groupedSettings[parts[0]] = {}
-
-			groupedSettings[parts[0]][parts[1]] = v
-		else:
-			groupedSettings[k] = v
-
-	return groupedSettings
+	return settings
 
 if __name__ == '__main__':
 	from . import log
 	settings = getSettings()
 
 	if not settings is None:
-		log.startLog(settings['sessionID'])
+		logPath = pathlib.Path(settings['outputFile']).parent
+		log.startLog(settings['sessionID'], logPath)
 		run(settings)

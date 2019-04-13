@@ -8,6 +8,7 @@ import math, time
 import numpy
 
 from qtpy import QtCore, QtGui, QtWidgets, QtMultimedia
+import argparseqt.gui
 
 from . import assets
 
@@ -36,7 +37,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 			'''
 				background: rgb(127, 127, 127);
 				color: #bbb;
-				font-size: 32pt;
+				font-size: 28pt;
 			'''
 		)
 
@@ -138,15 +139,20 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		elif stateName == 'FINISHED':
 			self.showFinished(data)
 
-
-def getExperimentInfo():
+def getSettings(parser, settings):
 	'''Display a GUI to collect experiment settings'''
-	
-	(sid,sidOK) = QtWidgets.QInputDialog.getText(None, 'QuickCSF', 'SessionID')
-	if sidOK:
-		return {'sessionID': sid}
+	dialog = argparseqt.gui.ArgDialog(parser)
+	dialog.setValues(settings)
+	dialog.exec_()
+	if dialog.result() == QtWidgets.QDialog.Accepted:
+		settings = dialog.getValues()
+		if None in [settings['sessionID'], settings['distance_mm']]:
+			QtWidgets.QMessageBox.critical(None, 'Missing information', 'You must specify a session ID and a distance value')
+			settings = None
 	else:
-		return None
+		settings = None
+
+	return settings
 
 def exception_handler(excType, exc, tb, extraDetails=None, parentWindow=None):
 	if issubclass(excType, KeyboardInterrupt):
