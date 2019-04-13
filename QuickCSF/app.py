@@ -134,7 +134,7 @@ def getSettings():
 
 	return settings
 
-if __name__ == '__main__':
+def main():
 	from . import log
 	settings = getSettings()
 
@@ -142,3 +142,6 @@ if __name__ == '__main__':
 		logPath = pathlib.Path(settings['outputFile']).parent
 		log.startLog(settings['sessionID'], logPath)
 		run(settings)
+
+if __name__ == '__main__':
+	main()

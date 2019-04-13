@@ -1,6 +1,6 @@
 # QuickCSF
 
-A fast, adaptive approach to estimating contrast sensitivity function parameters across multiple eccentricities and stimulus orientations.
+A fast, adaptive approach to estimating contrast sensitivity function parameters.
 
 This implmentation is based on:
 
