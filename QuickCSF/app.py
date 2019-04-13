@@ -72,7 +72,7 @@ def _start():
 
 	degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
 
-	stimGenerator = StimulusGenerators.RandomOrientationGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'])
+	stimGenerator = StimulusGenerators.QuickCSFGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['Controller'])
 
 	mainWindow.participantReady.connect(controller.onParticipantReady)
@@ -126,6 +126,7 @@ def getSettings():
 	stimulusSettings.add_argument('-fr', '--frequencyResolution', type=int, default=20, help='The number of frequency steps')
 
 	stimulusSettings.add_argument('--size', type=int, default=3, help='Gabor patch size in (degrees)')
+	stimulusSettings.add_argument('--orientation', type=float, help='Orientation of gabor patch (degrees). If unspecified, each trial will be random')
 
 	settings = argparseqt.groupingTools.parseIntoGroups(parser)
 	if None in [settings['sessionID'], settings['distance_mm']]:
