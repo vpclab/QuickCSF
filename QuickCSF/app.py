@@ -32,7 +32,7 @@ app.setApplicationName('QuickCSF')
 mainWindow = None
 settings = None
 
-def _onFinished(csfParameters):
+def _onFinished(results):
 	outputFile = pathlib.Path(settings['outputFile'])
 	logger.debug('Writing output file: ' + str(outputFile.resolve()))
 
@@ -41,10 +41,7 @@ def _onFinished(csfParameters):
 		record = {
 			'SessionID': settings['sessionID'],
 			'Timestamp': datetime.today().strftime('%Y-%m-%d %H:%M:%S'),
-			'Peak sensitivity': csfParameters[0],
-			'Peak frequency': csfParameters[1],
-			'Bandwidth': csfParameters[2],
-			'Truncation': csfParameters[3],
+			**results
 		}
 
 		writer = csv.DictWriter(csvFile, fieldnames=record.keys())
@@ -58,7 +55,7 @@ def _start():
 
 	def onStateTransition(state, data):
 		if state == 'FINISHED':
-			_onFinished(data[0])
+			_onFinished(data)
 
 	logger.debug('Showing main window')
 

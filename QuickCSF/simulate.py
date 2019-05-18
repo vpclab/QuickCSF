@@ -20,7 +20,7 @@ logger = logging.getLogger('QuickCSF.simulate')
 
 def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 	'''Generate a plot of estimates from QuickCSF, along with history of responses and true parameter values'''
-	
+
 	if graph is None:
 		fig = plt.figure()
 		graph = fig.add_subplot(1, 1, 1)
@@ -31,7 +31,7 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 80, 50).reshape(-1,1)
 
 	if unmappedTrueParams is not None:
-		truthData = QuickCSF.csf(unmappedTrueParams.reshape(1, -1), frequencyDomain)
+		truthData = QuickCSF.csf_unmapped(unmappedTrueParams.reshape(1, -1), frequencyDomain)
 		truthData = numpy.power(10, truthData)
 		truthLine = graph.fill_between(
 			frequencyDomain.reshape(-1),
@@ -42,7 +42,7 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 		truthData = None
 
 	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
-	estimatedData = QuickCSF.csf(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+	estimatedData = QuickCSF.csf_unmapped(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 	estimatedData = numpy.power(10, estimatedData)
 
 	estimatedLine = graph.fill_between(
@@ -50,7 +50,7 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 		estimatedData.reshape(-1),
 		color=(0, 0, 1, .4)
 	)
-	
+
 	## Chart responses
 	positives = {'f':[], 's':[]}
 	negatives = {'f':[], 's':[]}
@@ -112,7 +112,7 @@ def runSimulation(
 	numpy.random.seed()
 
 	if imagePath is not None:
-		pathlib.Path(imagePath).mkdir(parents=True, exist_ok=True) 
+		pathlib.Path(imagePath).mkdir(parents=True, exist_ok=True)
 
 	stimulusSpace = numpy.array([
 		QuickCSF.makeContrastSpace(stimuli['minContrast'], stimuli['maxContrast'], stimuli['contrastResolution']),
@@ -134,12 +134,12 @@ def runSimulation(
 		# Get the next stimulus
 		stimulus = qcsf.next()
 		newStimValues = numpy.array([[stimulus.contrast, stimulus.frequency]])
-		
+
 		# Simulate a response
 		if usePerfectResponses:
 			logger.debug('Simulating perfect response')
 			frequency = newStimValues[:,1]
-			trueSens = numpy.power(10, QuickCSF.csf(unmappedTrueParams, numpy.array([frequency])))
+			trueSens = numpy.power(10, QuickCSF.csf_unmapped(unmappedTrueParams, numpy.array([frequency])))
 			testContrast = newStimValues[:,0]
 			testSens = 1 / testContrast
 
@@ -150,7 +150,7 @@ def runSimulation(
 			response = numpy.random.rand() < p
 
 		qcsf.markResponse(response)
-		
+
 		# Update the plot
 		graph.clear()
 		graph.set_title(f'Estimated Contrast Sensitivity Function ({i+1})')
@@ -201,7 +201,7 @@ def entropyPlot(qcsf):
 if __name__ == '__main__':
 	from . import log
 	log.startLog()
-	
+
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument('-n', '--trials', type=int, help='Number of trials to simulate')

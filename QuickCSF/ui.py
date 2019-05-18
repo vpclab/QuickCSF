@@ -94,15 +94,19 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		self.displayWidget.setText(self.breakText)
 
 	def showFinished(self, results):
-		self.displayWidget.setText(self.finishedText + '\n\n' + str(results[0]))
+		outputDisplay = self.finishedText + '\n'
+		for key,value in results.items():
+			outputDisplay += f'\n{key} = {value:.4f}'
+				
+		self.displayWidget.setText(outputDisplay)
 
 	def keyReleaseEvent(self, event):
 		logger.debug(f'Key released {event.key()}')
 		if event.key() == QtCore.Qt.Key_Space:
 			self.participantReady.emit()
-		elif event.key() == QtCore.Qt.Key_4:
+		elif event.key() in (QtCore.Qt.Key_4, QtCore.Qt.Key_Left):
 			self.participantResponse.emit(True)
-		elif event.key() == QtCore.Qt.Key_6:
+		elif event.key() in (QtCore.Qt.Key_6, QtCore.Qt.Key_Right):
 			self.participantResponse.emit(False)
 
 	def onNewState(self, stateName, data):
