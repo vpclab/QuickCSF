@@ -42,6 +42,12 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 		truthData = None
 
 	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
+	estimatedParamMeans = numpy.array([[
+		estimatedParamMeans['peakSensitivity'],
+		estimatedParamMeans['peakFrequency'],
+		estimatedParamMeans['bandwidth'],
+		estimatedParamMeans['delta'],
+	]])
 	estimatedData = QuickCSF.csf_unmapped(estimatedParamMeans.reshape(1, -1), frequencyDomain)
 	estimatedData = numpy.power(10, estimatedData)
 
@@ -104,7 +110,7 @@ def runSimulation(
 	},
 	parameters={
 		'truePeakSensitivity':18, 'truePeakFrequency':11,
-		'trueBandwidth':12, 'trueBandwidth':11,
+		'trueBandwidth':12, 'trueDelta':11,
 	},
 ):
 	logger.info('Starting simulation')
@@ -123,7 +129,7 @@ def runSimulation(
 		parameters['truePeakSensitivity'],
 		parameters['truePeakFrequency'],
 		parameters['trueBandwidth'],
-		parameters['trueBandwidth'],
+		parameters['trueDelta'],
 	]])
 	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace)
 
