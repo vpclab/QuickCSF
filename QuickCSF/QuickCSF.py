@@ -59,14 +59,62 @@ def makeFrequencySpace(min=.2, max=36, count=20):
 
 	return frequencySpace
 
-def csf_unmapped(parameters, frequency):
-	'''The truncated log-parabola model for human contrast sensitivity
+def makeLogLinearSpace(min, max, count):
+	'''Creates values at log-linear equally spaced intervals'''
+	
+	expRange = numpy.log10(max)-numpy.log10(min)
+	expMin = numpy.log10(min)
 
+	logLinearSpace = numpy.array([0.] * count)
+	for i in range(count):
+		logLinearSpace[i] = (
+			(i/(count-1)) * expRange + expMin
+		)
+	return logLinearSpace
+
+def makePeakSensitivitySpace(min=2, max=1000, count=28):
+	'''Creates peak sensitivity values for searching at log-linear equally spaced intervals'''
+	
+	logger.debug('Making peak sensitivity space: ' + str(locals()))
+
+	peakSensitivitySpace = makeLogLinearSpace(min, max, count)
+
+	return peakSensitivitySpace
+
+def makePeakFrequencySpace(min=.2, max=20, count=21):
+	'''Creates peak frequency values for searching at log-linear equally spaced intervals'''
+	
+	logger.debug('Making peak frequency space: ' + str(locals()))
+
+	peakFrequencySpace = makeLogLinearSpace(min, max, count)
+
+	return peakFrequencySpace
+
+def makeBandwidthSpace(min=1, max=10, count=21):
+	'''Creates bandwidth values for searching at log-linear equally spaced intervals'''
+	
+	logger.debug('Making bandwidth space: ' + str(locals()))
+
+	peakBandwidthSpace = makeLogLinearSpace(min, max, count)
+
+	return peakBandwidthSpace
+
+def makeLogDeltaSpace(min=.02, max=2, count=21):
+	'''Creates log delta values for searching at log-linear equally spaced intervals'''
+	
+	logger.debug('Making log delta space: ' + str(locals()))
+
+	peakLogDeltaSpace = makeLogLinearSpace(min, max, count)
+
+	return peakLogDeltaSpace
+
+def csf_unmapped(parameterIndices, parameterSpace, frequency, continuous=False):
+	'''The truncated log-parabola model for human contrast sensitivity
 		Expects UNMAPPED parameters
 		Param order = peak sensitivity, peak frequency, bandwidth, log delta
 	'''
 	# Get everything into log-units
-	[peakSensitivity, peakFrequency, logBandwidth, delta] = mapCSFParams(parameters)
+	[peakSensitivity, peakFrequency, logBandwidth, delta] = mapCSFParams(parameterIndices, parameterSpace, False, continuous)
 
 	return csf(peakSensitivity, peakFrequency, logBandwidth, delta, frequency)
 
@@ -123,7 +171,14 @@ def aulcsf(peakSensitivity, peakFrequency, logBandwidth, delta, bucketWidth=.1):
 
 	return area
 
-def mapCSFParams(params, exponify=False):
+def mapParams(paramIndices, paramSpace):
+	expMin = numpy.min(paramSpace)
+	expMax = numpy.max(paramSpace)
+	expRange = expMax-expMin
+	count = len(paramSpace)
+	return paramIndices/(count-1) * expRange + expMin
+
+def mapCSFParams(paramIndices, paramSpace, exponify=False, continuous=False):
 	'''
 		Maps parameter indices to log values
 
@@ -133,15 +188,22 @@ def mapCSFParams(params, exponify=False):
 			Bandwidth: octaves
 			Delta: 1/contrast (Difference between Peak Sensitivity and the truncation)
 	'''
-	peakSensitivity = 0.1*params[:,0] + 0.3
-	peakFrequency = -0.7 + 0.1*params[:,1]
-	bandwidth = 0.05 * params[:,2]
-	logDelta = -1.7 + 0.1 * params[:,3]
+	# log-linear normalize
+	if continuous:
+		peakSensitivity = mapParams(paramIndices[:,0], paramSpace[0])
+		peakFrequency   = mapParams(paramIndices[:,1], paramSpace[1])
+		bandwidth       = mapParams(paramIndices[:,2], paramSpace[2])
+		logDelta        = mapParams(paramIndices[:,3], paramSpace[3])
+	else:
+		peakSensitivity = paramSpace[0][paramIndices[:,0]]
+		peakFrequency   = paramSpace[1][paramIndices[:,1]]
+		bandwidth       = paramSpace[2][paramIndices[:,2]]
+		logDelta        = paramSpace[3][paramIndices[:,3]]
+
 	delta = numpy.power(10, logDelta)
 
 	if exponify:
 		deltaDiff = numpy.power(10, peakSensitivity-delta)
-
 		peakSensitivity = numpy.power(10, peakSensitivity)
 		peakFrequency = numpy.power(10, peakFrequency)
 		bandwidth = numpy.power(10, bandwidth)
@@ -153,7 +215,7 @@ def entropy(p):
 	return numpy.multiply(-p, numpy.log(p)) - numpy.multiply(1-p, numpy.log(1-p))
 
 class QuickCSFEstimator():
-	def __init__(self, stimulusSpace=None):
+	def __init__(self, parameterSpace=None, stimulusSpace=None):
 		'''Create a new QuickCSF estimator with the specified input/output spaces
 
 			Args:
@@ -162,17 +224,17 @@ class QuickCSFEstimator():
 		'''
 		if stimulusSpace is None:
 			stimulusSpace = numpy.array([
-				makeContrastSpace(.0001, .05),
-				makeFrequencySpace()
+				makeContrastSpace(.001, 1, 24),
+				makeFrequencySpace(.2, 36, 20)
 			])
-
-		parameterSpace = numpy.array([
-			numpy.arange(0, 28),	# Peak sensitivity
-			numpy.arange(0, 21),	# Peak frequency
-			numpy.arange(0, 21),	# Log bandwidth
-			numpy.arange(0, 21)		# Low frequency truncation (log delta)
-		])
-
+		if parameterSpace is None:
+			parameterSpace = numpy.array([
+				makePeakSensitivitySpace(2, 1000, 28), # Peak sensitivity
+				makePeakFrequencySpace(0.2, 20, 21),   # Peak frequency
+				makeBandwidthSpace(1, 10, 21),         # Log bandwidth
+				makeLogDeltaSpace(0.02, 2, 21)         # Low frequency truncation (log delta)
+			])
+		logger.debug(parameterSpace)
 		logger.info('Initializing QuickCSFEStimator')
 		logger.debug('Initializing QuickCSFEstimator stimSpace='+str(stimulusSpace).replace('\n','')+', paramSpace='+str(parameterSpace).replace('\n',''))
 
@@ -203,7 +265,7 @@ class QuickCSFEstimator():
 		# more probable stim params have higher weight of being sampled
 		randomSampleCount = 100
 
-		paramIndicies = numpy.random.choice(
+		paramIndices = numpy.random.choice(
 			numpy.arange(self.paramComboCount),
 			randomSampleCount,
 			p=self.probabilities[:,0]
@@ -211,8 +273,8 @@ class QuickCSFEstimator():
 
 		# calculate probabilities for all stimuli with all samples of parameters
 		# @TODO: parallelize this
-		stimIndicies = numpy.arange(self.stimComboCount).reshape(-1,1)
-		p = self._pmeas(paramIndicies, stimIndicies)
+		stimIndices = numpy.arange(self.stimComboCount).reshape(-1,1)
+		p = self._pmeas(paramIndices, stimIndices)
 
 		# Determine amount of information to be gained
 		pbar = sum(p)/randomSampleCount
@@ -269,7 +331,7 @@ class QuickCSFEstimator():
 		stimulusIndices = self.inflateStimulusIndex(stimulusIndex)
 
 		frequencies = self.stimulusSpace[1][stimulusIndices[:,1]].reshape(1,-1)
-		csfValues = csf_unmapped(parameters, frequencies)
+		csfValues = csf_unmapped(parameters, self.parameterSpace, frequencies)
 
 		# Make vector of sensitivities
 		contrast = self.stimulusSpace[0][stimulusIndices[:,0]]
@@ -334,7 +396,7 @@ class QuickCSFEstimator():
 		'''Calculate an estimate of all 4 parameters based on their probabilities
 
 			Args:
-				leaveAsIndicies: if False, will output real-world, linear-scale values
+				leaveAsIndices: if False, will output real-world, linear-scale values
 					if True, will output indices, which can be converted with `mapCSFParams()`
 		'''
 
@@ -349,11 +411,11 @@ class QuickCSFEstimator():
 
 		results = estimatedParamMeans.reshape(1,len(self.parameterRanges))
 
-		if not leaveAsIndices:
-			results = mapCSFParams(results, True).T
-
+		if leaveAsIndices:
+			return results
+		
+		results = mapCSFParams(results, self.parameterSpace, True, True).T
 		results = results.reshape(4).tolist()
-
 		return {
 			'peakSensitivity': results[0],
 			'peakFrequency': results[1],

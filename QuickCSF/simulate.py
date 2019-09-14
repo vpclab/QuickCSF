@@ -31,7 +31,7 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 	frequencyDomain = QuickCSF.makeFrequencySpace(.005, 80, 50).reshape(-1,1)
 
 	if unmappedTrueParams is not None:
-		truthData = QuickCSF.csf_unmapped(unmappedTrueParams.reshape(1, -1), frequencyDomain)
+		truthData = QuickCSF.csf_unmapped(unmappedTrueParams.reshape(1, -1), qCSFEstimator.parameterSpace, frequencyDomain)
 		truthData = numpy.power(10, truthData)
 		truthLine = graph.fill_between(
 			frequencyDomain.reshape(-1),
@@ -42,13 +42,7 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 		truthData = None
 
 	estimatedParamMeans = qCSFEstimator.getResults(leaveAsIndices=True)
-	estimatedParamMeans = numpy.array([[
-		estimatedParamMeans['peakSensitivity'],
-		estimatedParamMeans['peakFrequency'],
-		estimatedParamMeans['bandwidth'],
-		estimatedParamMeans['delta'],
-	]])
-	estimatedData = QuickCSF.csf_unmapped(estimatedParamMeans.reshape(1, -1), frequencyDomain)
+	estimatedData = QuickCSF.csf_unmapped(estimatedParamMeans.reshape(1, -1), qCSFEstimator.parameterSpace, frequencyDomain, True)
 	estimatedData = numpy.power(10, estimatedData)
 
 	estimatedLine = graph.fill_between(
@@ -84,13 +78,13 @@ def plot(qCSFEstimator, graph=None, unmappedTrueParams=None, showNumbers=True):
 	graph.grid()
 
 	if showNumbers:
-		estimatedParamMeans = QuickCSF.mapCSFParams(estimatedParamMeans, exponify=True)
+		estimatedParamMeans = QuickCSF.mapCSFParams(estimatedParamMeans, qCSFEstimator.parameterSpace, exponify=True, continuous=True)
 		estimatedParamMeans = estimatedParamMeans.reshape(1,-1).tolist()[0]
 		paramEstimates = '%03.2f, %.4f, %.4f, %.4f' % tuple(estimatedParamMeans)
 		estimatedLine.set_label(f'Estim: {paramEstimates}')
 
 		if truthData is not None:
-			trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, True).T.tolist()[0]
+			trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, qCSFEstimator.parameterSpace, True).T.tolist()[0]
 			trueParams = '%03.2f, %.4f, %.4f, %.4f' % tuple(trueParams)
 			truthLine.set_label(f'Truth: {trueParams}')
 
@@ -111,6 +105,10 @@ def runSimulation(
 	parameters={
 		'truePeakSensitivity':18, 'truePeakFrequency':11,
 		'trueBandwidth':12, 'trueDelta':11,
+		'minPeakSensitivity':2, 'maxPeakSensitivity':1000, 'peakSensitivityResolution':28,
+		'minPeakFrequency':0.2, 'maxPeakFrequency':20, 'peakFrequencyResolution': 21,
+		'minBandwidth':1, 'maxBandwidth':10, 'bandwidthResolution': 21,
+		'minLogDelta':0.02, 'maxLogDelta':2, 'logDeltaResolution': 21,
 	},
 ):
 	logger.info('Starting simulation')
@@ -124,6 +122,12 @@ def runSimulation(
 		QuickCSF.makeContrastSpace(stimuli['minContrast'], stimuli['maxContrast'], stimuli['contrastResolution']),
 		QuickCSF.makeFrequencySpace(stimuli['minFrequency'], stimuli['maxFrequency'], stimuli['frequencyResolution'])
 	])
+	parameterSpace = numpy.array([
+		QuickCSF.makePeakSensitivitySpace(parameters['minPeakSensitivity'], parameters['maxPeakSensitivity'], parameters['peakSensitivityResolution']), # Peak sensitivity
+		QuickCSF.makePeakFrequencySpace(parameters['minPeakFrequency'], parameters['maxPeakFrequency'], parameters['peakFrequencyResolution']),          # Peak frequency
+		QuickCSF.makeBandwidthSpace(parameters['minBandwidth'], parameters['maxBandwidth'], parameters['bandwidthResolution']),                         # Log bandwidth
+		QuickCSF.makeLogDeltaSpace(parameters['minLogDelta'], parameters['maxLogDelta'], parameters['logDeltaResolution'])                              # Low frequency truncation (log delta)
+	])
 
 	unmappedTrueParams = numpy.array([[
 		parameters['truePeakSensitivity'],
@@ -131,7 +135,7 @@ def runSimulation(
 		parameters['trueBandwidth'],
 		parameters['trueDelta'],
 	]])
-	qcsf = QuickCSF.QuickCSFEstimator(stimulusSpace)
+	qcsf = QuickCSF.QuickCSFEstimator(parameterSpace, stimulusSpace)
 
 	graph = plot(qcsf, unmappedTrueParams=unmappedTrueParams)
 
@@ -145,7 +149,7 @@ def runSimulation(
 		if usePerfectResponses:
 			logger.debug('Simulating perfect response')
 			frequency = newStimValues[:,1]
-			trueSens = numpy.power(10, QuickCSF.csf_unmapped(unmappedTrueParams, numpy.array([frequency])))
+			trueSens = numpy.power(10, QuickCSF.csf_unmapped(unmappedTrueParams, qcsf.parameterSpace, numpy.array([frequency])))
 			testContrast = newStimValues[:,0]
 			testSens = 1 / testContrast
 
@@ -175,7 +179,7 @@ def runSimulation(
 	paramEstimates = qcsf.getResults()
 	logger.info('Results: ' + str(paramEstimates))
 
-	trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, True).T
+	trueParams = QuickCSF.mapCSFParams(unmappedTrueParams, qcsf.parameterSpace, True).T
 	print('******* Results *******')
 	print(f'\tEstimates = {paramEstimates}')
 	print(f'\tActuals = {trueParams}')
@@ -228,6 +232,22 @@ if __name__ == '__main__':
 	parameterSettings.add_argument('-f', '--truePeakFrequency', type=int, default=11, help='True peak frequency (index)')
 	parameterSettings.add_argument('-b', '--trueBandwidth', type=int, default=12, help='True bandwidth (index)')
 	parameterSettings.add_argument('-d', '--trueDelta', type=int, default=11, help='True delta truncation (index)')
+
+	parameterSettings.add_argument('-minps', '--minPeakSensitivity', type=float, default=2.0, help='The lower bound of peak sensitivity value (>1.0)')
+	parameterSettings.add_argument('-maxps', '--maxPeakSensitivity', type=float, default=1000.0, help='The upper bound of peak sensitivity value')
+	parameterSettings.add_argument('-psr', '--peakSensitivityResolution', type=int, default=28, help='The number of peak sensitivity steps')
+	
+	parameterSettings.add_argument('-minpf', '--minPeakFrequency', type=float, default=.2, help='The lower bound of peak frequency value (>0)')
+	parameterSettings.add_argument('-maxpf', '--maxPeakFrequency', type=float, default=20.0, help='The upper bound of peak frequency value')
+	parameterSettings.add_argument('-pfr', '--peakFrequencyResolution', type=int, default=21, help='The number of peak frequency steps')
+	
+	parameterSettings.add_argument('-minb', '--minBandwidth', type=float, default=1.0, help='The lower bound of bandwidth value')
+	parameterSettings.add_argument('-maxb', '--maxBandwidth', type=float, default=10.0, help='The upper bound of bandwidth value')
+	parameterSettings.add_argument('-br', '--bandwidthResolution', type=int, default=21, help='The number of bandwidth steps')
+	
+	parameterSettings.add_argument('-mind', '--minLogDelta', type=float, default=.02, help='The lower bound of logdelta value')
+	parameterSettings.add_argument('-maxd', '--maxLogDelta', type=float, default=2.0, help='The upper bound of logdelta value')
+	parameterSettings.add_argument('-dr', '--logDeltaResolution', type=int, default=21, help='The number of logdelta steps')
 
 	settings = argparseqt.groupingTools.parseIntoGroups(parser)
 	if settings['trials'] is None:

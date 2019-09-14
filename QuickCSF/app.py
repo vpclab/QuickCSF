@@ -69,7 +69,7 @@ def _start():
 
 	degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
 
-	stimGenerator = StimulusGenerators.QuickCSFGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'])
+	stimGenerator = StimulusGenerators.QuickCSFGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'], **settings['Parameters'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['Controller'])
 
 	mainWindow.participantReady.connect(controller.onParticipantReady)
@@ -124,6 +124,23 @@ def getSettings():
 
 	stimulusSettings.add_argument('--size', type=int, default=3, help='Gabor patch size in (degrees)')
 	stimulusSettings.add_argument('--orientation', type=float, help='Orientation of gabor patch (degrees). If unspecified, each trial will be random')
+
+	parameterSettings = parser.add_argument_group('Parameters')
+	parameterSettings.add_argument('-minps', '--minPeakSensitivity', type=float, default=2.0, help='The lower bound of peak sensitivity value (>1.0)')
+	parameterSettings.add_argument('-maxps', '--maxPeakSensitivity', type=float, default=1000.0, help='The upper bound of peak sensitivity value')
+	parameterSettings.add_argument('-psr', '--peakSensitivityResolution', type=int, default=28, help='The number of peak sensitivity steps')
+	
+	parameterSettings.add_argument('-minpf', '--minPeakFrequency', type=float, default=.2, help='The lower bound of peak frequency value (>0)')
+	parameterSettings.add_argument('-maxpf', '--maxPeakFrequency', type=float, default=20.0, help='The upper bound of peak frequency value')
+	parameterSettings.add_argument('-pfr', '--peakFrequencyResolution', type=int, default=21, help='The number of peak frequency steps')
+	
+	parameterSettings.add_argument('-minb', '--minBandwidth', type=float, default=1.0, help='The lower bound of bandwidth value')
+	parameterSettings.add_argument('-maxb', '--maxBandwidth', type=float, default=10.0, help='The upper bound of bandwidth value')
+	parameterSettings.add_argument('-br', '--bandwidthResolution', type=int, default=21, help='The number of bandwidth steps')
+	
+	parameterSettings.add_argument('-mind', '--minLogDelta', type=float, default=.02, help='The lower bound of logdelta value')
+	parameterSettings.add_argument('-maxd', '--maxLogDelta', type=float, default=2.0, help='The upper bound of logdelta value')
+	parameterSettings.add_argument('-dr', '--logDeltaResolution', type=int, default=21, help='The number of logdelta steps')
 
 	settings = argparseqt.groupingTools.parseIntoGroups(parser)
 	if None in [settings['sessionID'], settings['distance_mm']]:
