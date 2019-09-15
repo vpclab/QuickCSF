@@ -69,7 +69,7 @@ def _start():
 
 	degreesToPixels = functools.partial(screens.degreesToPixels, distance_mm=settings['distance_mm'])
 
-	stimGenerator = StimulusGenerators.QuickCSFGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'])
+	stimGenerator = StimulusGenerators.QuickCSFGenerator(degreesToPixels=degreesToPixels, **settings['Stimuli'], **settings['Parameters'])
 	controller = CSFController.Controller_2AFC(stimGenerator, **settings['Controller'])
 
 	mainWindow.participantReady.connect(controller.onParticipantReady)
@@ -114,7 +114,7 @@ def getSettings():
 	controllerSettings.add_argument('--waitForReady', default=False, action='store_true', help='Wait for the participant to indicate they are ready for the next trial')
 
 	stimulusSettings = parser.add_argument_group('Stimuli')
-	stimulusSettings.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	stimulusSettings.add_argument('-minc', '--minContrast', type=float, default=.001, help='The lowest contrast value to measure (0.0-1.0)')
 	stimulusSettings.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
 	stimulusSettings.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
 
@@ -124,6 +124,23 @@ def getSettings():
 
 	stimulusSettings.add_argument('--size', type=int, default=3, help='Gabor patch size in (degrees)')
 	stimulusSettings.add_argument('--orientation', type=float, help='Orientation of gabor patch (degrees). If unspecified, each trial will be random')
+
+	parameterSettings = parser.add_argument_group('Parameters')
+	parameterSettings.add_argument('-minps', '--minPeakSensitivity', type=float, default=2.0, help='The lower bound of peak sensitivity value (>1.0)')
+	parameterSettings.add_argument('-maxps', '--maxPeakSensitivity', type=float, default=1000.0, help='The upper bound of peak sensitivity value')
+	parameterSettings.add_argument('-psr', '--peakSensitivityResolution', type=int, default=28, help='The number of peak sensitivity steps')
+	
+	parameterSettings.add_argument('-minpf', '--minPeakFrequency', type=float, default=.2, help='The lower bound of peak frequency value (>0)')
+	parameterSettings.add_argument('-maxpf', '--maxPeakFrequency', type=float, default=20.0, help='The upper bound of peak frequency value')
+	parameterSettings.add_argument('-pfr', '--peakFrequencyResolution', type=int, default=21, help='The number of peak frequency steps')
+	
+	parameterSettings.add_argument('-minb', '--minBandwidth', type=float, default=1.0, help='The lower bound of bandwidth value')
+	parameterSettings.add_argument('-maxb', '--maxBandwidth', type=float, default=10.0, help='The upper bound of bandwidth value')
+	parameterSettings.add_argument('-br', '--bandwidthResolution', type=int, default=21, help='The number of bandwidth steps')
+	
+	parameterSettings.add_argument('-mind', '--minLogDelta', type=float, default=.02, help='The lower bound of logdelta value')
+	parameterSettings.add_argument('-maxd', '--maxLogDelta', type=float, default=2.0, help='The upper bound of logdelta value')
+	parameterSettings.add_argument('-dr', '--logDeltaResolution', type=int, default=21, help='The number of logdelta steps')
 
 	settings = argparseqt.groupingTools.parseIntoGroups(parser)
 	if None in [settings['sessionID'], settings['distance_mm']]:
@@ -136,6 +153,12 @@ def main():
 	settings = getSettings()
 
 	if not settings is None:
+		# parameter validation: peak sensitivty space and peak frequency space should be subspaces of stimulus spaces (1/contrast, frequency)
+		if not (settings['Parameters']['minPeakSensitivity'] >= 1/settings['Stimuli']['maxContrast'] and settings['Parameters']['maxPeakSensitivity'] <= 1/settings['Stimuli']['minContrast']):
+			raise ValueError("Please increase the range of contrast space or decrease the range of peak sensitivity space.")
+		if not (settings['Parameters']['minPeakFrequency'] >= settings['Stimuli']['minFrequency'] and settings['Parameters']['maxPeakFrequency'] <= settings['Stimuli']['maxFrequency']):
+			raise ValueError("Please increase the range of frequency space or decrease the range of peak frequency space.")
+
 		logPath = pathlib.Path(settings['outputFile']).parent
 		log.startLog(settings['sessionID'], logPath)
 		run(settings)

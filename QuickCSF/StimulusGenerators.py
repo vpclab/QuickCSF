@@ -30,12 +30,22 @@ class QuickCSFGenerator(QuickCSF.QuickCSFEstimator):
 		size=100, orientation=None,
 		minContrast=.01, maxContrast=1.0, contrastResolution=24,
 		minFrequency=0.2, maxFrequency=36.0, frequencyResolution=20,
+		minPeakSensitivity=2, maxPeakSensitivity=1000, peakSensitivityResolution=28,
+		minPeakFrequency=0.2, maxPeakFrequency=20, peakFrequencyResolution=21,
+		minBandwidth=1, maxBandwidth=10, bandwidthResolution=21,
+		minLogDelta=0.02, maxLogDelta=2, logDeltaResolution=21,
 		degreesToPixels=None
 	):
 		super().__init__(
 			stimulusSpace = numpy.array([
 				QuickCSF.makeContrastSpace(minContrast, maxContrast, contrastResolution),
 				QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
+			]),
+			parameterSpace = numpy.array([
+				QuickCSF.makePeakSensitivitySpace(minPeakSensitivity, maxPeakSensitivity, peakSensitivityResolution),
+				QuickCSF.makePeakFrequencySpace(minPeakFrequency, maxPeakFrequency, peakFrequencyResolution),
+				QuickCSF.makeBandwidthSpace(minBandwidth, maxBandwidth, bandwidthResolution),
+				QuickCSF.makeLogDeltaSpace(minLogDelta, maxLogDelta, logDeltaResolution)
 			])
 		)
 
