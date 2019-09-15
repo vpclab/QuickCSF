@@ -99,7 +99,7 @@ def runSimulation(
 	imagePath=None,
 	usePerfectResponses=False,
 	stimuli={
-		'minContrast':0.01, 'maxContrast':1, 'contrastResolution':24,
+		'minContrast':0.001, 'maxContrast':1, 'contrastResolution':24,
 		'minFrequency':.2, 'maxFrequency':36, 'frequencyResolution':20,
 	},
 	parameters={
@@ -219,7 +219,7 @@ if __name__ == '__main__':
 	parser.add_argument('-perfect', '--usePerfectResponses', default=False, action='store_true', help='Whether to simulate perfect responses, rather than probablistic ones')
 
 	stimuliSettings = parser.add_argument_group('stimuli')
-	stimuliSettings.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	stimuliSettings.add_argument('-minc', '--minContrast', type=float, default=.001, help='The lowest contrast value to measure (0.0-1.0)')
 	stimuliSettings.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
 	stimuliSettings.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
 
@@ -257,4 +257,10 @@ if __name__ == '__main__':
 		settings = ui.getSettings(parser, settings, ['trials'])
 
 	if settings is not None:
+		# parameter validation: peak sensitivty space and peak frequency space should be subspaces of stimulus spaces (1/contrast, frequency)
+		if not (settings['parameters']['minPeakSensitivity'] >= 1/settings['stimuli']['maxContrast'] and settings['parameters']['maxPeakSensitivity'] <= 1/settings['stimuli']['minContrast']):
+			raise ValueError("Please increase the range of contrast space or decrease the range of peak sensitivity space.")
+		if not (settings['parameters']['minPeakFrequency'] >= settings['stimuli']['minFrequency'] and settings['parameters']['maxPeakFrequency'] <= settings['stimuli']['maxFrequency']):
+			raise ValueError("Please increase the range of frequency space or decrease the range of peak frequency space.")
+
 		runSimulation(**settings)

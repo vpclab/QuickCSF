@@ -114,7 +114,7 @@ def getSettings():
 	controllerSettings.add_argument('--waitForReady', default=False, action='store_true', help='Wait for the participant to indicate they are ready for the next trial')
 
 	stimulusSettings = parser.add_argument_group('Stimuli')
-	stimulusSettings.add_argument('-minc', '--minContrast', type=float, default=.01, help='The lowest contrast value to measure (0.0-1.0)')
+	stimulusSettings.add_argument('-minc', '--minContrast', type=float, default=.001, help='The lowest contrast value to measure (0.0-1.0)')
 	stimulusSettings.add_argument('-maxc', '--maxContrast', type=float, default=1.0, help='The highest contrast value to measure (0.0-1.0)')
 	stimulusSettings.add_argument('-cr', '--contrastResolution', type=int, default=24, help='The number of contrast steps')
 
@@ -153,6 +153,12 @@ def main():
 	settings = getSettings()
 
 	if not settings is None:
+		# parameter validation: peak sensitivty space and peak frequency space should be subspaces of stimulus spaces (1/contrast, frequency)
+		if not (settings['Parameters']['minPeakSensitivity'] >= 1/settings['Stimuli']['maxContrast'] and settings['Parameters']['maxPeakSensitivity'] <= 1/settings['Stimuli']['minContrast']):
+			raise ValueError("Please increase the range of contrast space or decrease the range of peak sensitivity space.")
+		if not (settings['Parameters']['minPeakFrequency'] >= settings['Stimuli']['minFrequency'] and settings['Parameters']['maxPeakFrequency'] <= settings['Stimuli']['maxFrequency']):
+			raise ValueError("Please increase the range of frequency space or decrease the range of peak frequency space.")
+
 		logPath = pathlib.Path(settings['outputFile']).parent
 		log.startLog(settings['sessionID'], logPath)
 		run(settings)

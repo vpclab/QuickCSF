@@ -219,6 +219,8 @@ class QuickCSFEstimator():
 		'''Create a new QuickCSF estimator with the specified input/output spaces
 
 			Args:
+				parameterSpace: 4,x numpy array of attributes to be used for four parameters searching
+					numpy.array([peakSensitivity, peakFrequency, bandwidth, logdelta])
 				stimulusSpace: 2,x numpy array of attributes to be used for stimulus generation
 					numpy.array([contrasts, frequencies])
 		'''
@@ -234,7 +236,7 @@ class QuickCSFEstimator():
 				makeBandwidthSpace(1, 10, 21),         # Log bandwidth
 				makeLogDeltaSpace(0.02, 2, 21)         # Low frequency truncation (log delta)
 			])
-		logger.debug(parameterSpace)
+			
 		logger.info('Initializing QuickCSFEStimator')
 		logger.debug('Initializing QuickCSFEstimator stimSpace='+str(stimulusSpace).replace('\n','')+', paramSpace='+str(parameterSpace).replace('\n',''))
 
