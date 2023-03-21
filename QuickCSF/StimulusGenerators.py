@@ -22,7 +22,7 @@ class Stimulus:
 
 class QuickCSFGenerator(QuickCSF.QuickCSFEstimator):
 	''' Generate fixed-size stimuli with contrast/spatial frequency determined by QuickCSF
-	
+
 		If orientation is None, random orientations will be generated
 	'''
 
@@ -33,10 +33,10 @@ class QuickCSFGenerator(QuickCSF.QuickCSFEstimator):
 		degreesToPixels=None
 	):
 		super().__init__(
-			stimulusSpace = numpy.array([
+			stimulusSpace = [
 				QuickCSF.makeContrastSpace(minContrast, maxContrast, contrastResolution),
 				QuickCSF.makeFrequencySpace(minFrequency, maxFrequency, frequencyResolution)
-			])
+			]
 		)
 
 		self.size = size

@@ -120,10 +120,10 @@ def runSimulation(
 	if imagePath is not None:
 		pathlib.Path(imagePath).mkdir(parents=True, exist_ok=True)
 
-	stimulusSpace = numpy.array([
+	stimulusSpace = [
 		QuickCSF.makeContrastSpace(stimuli['minContrast'], stimuli['maxContrast'], stimuli['contrastResolution']),
 		QuickCSF.makeFrequencySpace(stimuli['minFrequency'], stimuli['maxFrequency'], stimuli['frequencyResolution'])
-	])
+	]
 
 	unmappedTrueParams = numpy.array([[
 		parameters['truePeakSensitivity'],

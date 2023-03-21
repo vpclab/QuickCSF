@@ -161,17 +161,17 @@ class QuickCSFEstimator():
 					numpy.array([contrasts, frequencies])
 		'''
 		if stimulusSpace is None:
-			stimulusSpace = numpy.array([
+			stimulusSpace = [
 				makeContrastSpace(.0001, .05),
 				makeFrequencySpace()
-			])
+			]
 
-		parameterSpace = numpy.array([
+		parameterSpace = [
 			numpy.arange(0, 28),	# Peak sensitivity
 			numpy.arange(0, 21),	# Peak frequency
 			numpy.arange(0, 21),	# Log bandwidth
 			numpy.arange(0, 21)		# Low frequency truncation (log delta)
-		])
+		]
 
 		logger.info('Initializing QuickCSFEStimator')
 		logger.debug('Initializing QuickCSFEstimator stimSpace='+str(stimulusSpace).replace('\n','')+', paramSpace='+str(parameterSpace).replace('\n',''))
