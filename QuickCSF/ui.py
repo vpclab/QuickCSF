@@ -30,7 +30,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 	def __init__(self, instructions=None, parent=None):
 		super().__init__(parent)
 		self.displayWidget = QtWidgets.QLabel(self)
-		self.displayWidget.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
+		self.displayWidget.setAlignment(QtCore.Qt.AlignCenter)
 		self.displayWidget.setWordWrap(True)
 		self.displayWidget.setMargin(100)
 		self.displayWidget.setStyleSheet(
@@ -42,7 +42,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		)
 
 		self.instructionsText = instructions if instructions is not None else DEFAULT_INSTRUCTIONS
-		
+
 		self.breakText = 'Good job - it\'s now time for a break!\n\nWhen you are ready to continue, press the [ SPACEBAR ].'
 		self.readyText = 'Ready?'
 		self.responseText = '?'
@@ -97,7 +97,7 @@ class QuickCSFWindow(QtWidgets.QMainWindow):
 		outputDisplay = self.finishedText + '\n'
 		for key,value in results.items():
 			outputDisplay += f'\n{key} = {value:.4f}'
-				
+
 		self.displayWidget.setText(outputDisplay)
 
 	def keyReleaseEvent(self, event):
@@ -150,7 +150,7 @@ def getSettings(parser, settings, requiredFields=[]):
 	dialog.exec_()
 	if dialog.result() == QtWidgets.QDialog.Accepted:
 		settings = dialog.getValues()
-		
+
 		for field in requiredFields:
 			if settings[field] == None:
 				QtWidgets.QMessageBox.critical(
