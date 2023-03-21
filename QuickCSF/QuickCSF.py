@@ -14,7 +14,10 @@ import logging
 
 import time
 import math
-from collections import Iterable
+try:
+	from collections.abc import Iterable
+except ImportError:
+	from collections import Iterable
 
 import numpy
 
