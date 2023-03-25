@@ -13,7 +13,7 @@ class State:
 	'''Base class for state objects that describe the state of the controller and transition map'''
 
 	def __init__(self, nextStateName=None, name=None):
-		'''Create a new state		
+		'''Create a new state
 			Args:
 				nextStateName (str): the state we should transition to when finished
 				name (str): the name of this state
@@ -21,7 +21,7 @@ class State:
 		self.name = name
 		self.finished = False
 		self.nextStateName = nextStateName
-	
+
 	def getNextStateName(self):
 		return self.nextStateName
 
@@ -61,6 +61,7 @@ class Trial_2AFC():
 		self.stimulusOnFirst = stimulusOnFirst
 		self.stimulus = {}
 		self.correct = None
+		self.id = ''
 
 	def __str__(self):
 		return self.__repr__()
@@ -70,7 +71,7 @@ class Trial_2AFC():
 
 class Controller_2AFC(QtCore.QObject):
 	'''A 2AFC experiment controller
-	
+
 		Follows a basic pattern:
 			Execute `blockCount` blocks:
 				Execute `trialsPerBlock` trials:
@@ -135,6 +136,11 @@ class Controller_2AFC(QtCore.QObject):
 				blocks[-1].append(trials.pop())
 
 		random.shuffle(blocks)
+
+		for blockIdx, block in enumerate(blocks):
+			for trialIdx, trial in enumerate(block):
+				trial.id = f'{(blockIdx+1):02d}-{(trialIdx+1):02d}'
+
 		return blocks
 
 	def _buildStateSpace(self, fixationDuration, stimulusDuration, maskDuration, interStimulusInterval, feedbackDuration, waitForReady):
@@ -219,7 +225,7 @@ class Controller_2AFC(QtCore.QObject):
 
 	def _update(self):
 		'''Update the current state, transition to the next state if finished
-		
+
 			Note:
 				This is called automatically by Qt's event loop after `start()` has been called
 		'''
