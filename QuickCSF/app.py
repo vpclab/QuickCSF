@@ -53,7 +53,15 @@ def _onFinished(results):
 def _start():
 	global mainWindow, settings
 
+	graph = None
 	def onStateTransition(state, data):
+		if graph is not None and state == 'FEEDBACK':
+			title = f'{settings["sessionID"]}{data.id}'
+			graph.clear()
+			graph.set_title(f'Estimated Contrast Sensitivity Function ({title})')
+			plot(controller.stimulusGenerator, graph, show=False)
+			plt.savefig(pathlib.Path(settings['imagePath']+f'/{title}.png').resolve())
+
 		if state == 'FINISHED':
 			_onFinished(data)
 
@@ -81,10 +89,19 @@ def _start():
 	QtCore.QTimer.singleShot(0, controller.start)
 	mainWindow.showFullScreen()
 
+	if settings['imagePath'] is not None and settings['imagePath'] != '':
+		from .plot import plot
+		import matplotlib.pyplot as plt
+
+		title = f'{settings["sessionID"]}-00-00'
+		graph = plot(controller.stimulusGenerator, show=False)
+		graph.set_title(f'Estimated Contrast Sensitivity Function ({title})')
+		plt.savefig(pathlib.Path(settings['imagePath']+f'/{title}.png').resolve())
+
 def run(configuredSettings=None):
 	'''Start the QuickCSF app'''
 	global settings
-	
+
 	settings = configuredSettings
 
 	ui.popupUncaughtExceptions()
@@ -100,6 +117,7 @@ def getSettings():
 	parser.add_argument('-d', '--distance_mm', type=float, default=None, help='Distance (mm) from the display to the observer')
 	parser.add_argument('--outputFile', default='data/QuickCSF-results.csv', help='The path/file to save results into')
 	parser.add_argument('--instructionsFile', default=None, help='A plaintext file containing the instructions. If unspecified, default instructions will be displayed')
+	parser.add_argument('--imagePath', default=None, help='If specified, path to save images')
 
 	controllerSettings = parser.add_argument_group('Controller')
 	controllerSettings.add_argument('--trialsPerBlock', type=int, default=25, help='Number of trials in each block')
